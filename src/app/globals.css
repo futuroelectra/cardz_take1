@@ -1,26 +1,36 @@
 @import "tailwindcss";
 
+@theme {
+  /* Brand Colors */
+  --color-cardzzz-wine: #220020;
+  --color-cardzzz-blood: #560000;
+  --color-cardzzz-cream: #FFFADC;
+  --color-cardzzz-accent: #890305;
+  --color-cardzzz-muted: #858582;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Font Families */
+  --font-satoshi: "Satoshi Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-roundo: "Roundo Variable", ui-sans-serif, system-ui, sans-serif;
+  --foreground: var(--color-cardzzz-cream);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Font utility classes for Tailwind */
+.font-satoshi {
+  font-family: var(--font-satoshi);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.font-roundo {
+  font-family: var(--font-roundo);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* This creates that deep red/purple gradient from your screenshots */
+  background: radial-gradient(circle at center, #560000 0%, #220020 100%);
+  color: var(--color-cardzzz-cream);
+  font-family: var(--font-satoshi);
+  min-height: 100vh;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
 }

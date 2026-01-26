@@ -1,0 +1,11 @@
+---
+description: Standards for creating and managing Cursor rules in this project
+globs: .cursor/rules/*.mdc
+alwaysApply: true
+---
+# Cursor Rule Standards
+
+1. **Location**: All rules must live in `.cursor/rules/`.
+2. **Format**: Always use `.mdc` files with YAML frontmatter.
+3. **Naming**: Use kebab-case (e.g., `ui-components.mdc`).
+4. **Focus**: Each rule should handle ONE specific domain (e.g., Styling, API, or Testing).

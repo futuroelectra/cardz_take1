@@ -1,0 +1,24 @@
+---
+description: Pixel-perfect Tailwind implementation calibrated to "Cardzzz" Figma specs
+globs: src/components/**/*.tsx, src/app/**/*.tsx
+alwaysApply: true
+---
+# Cardzzz Visual Standards
+
+## 1. Design Tokens (Source of Truth)
+- **Primary Gradient**: `bg-gradient-to-b from-[#220020] to-[#560000]`
+- **Cream Text**: `text-[#FFFADC]`
+- **Accent Red**: `text-[#890305]` or `bg-[#890305]`
+- **Chat Max-Width**: Always constrain chat area to `max-w-[650px]`.
+
+## 2. Naming Conventions (Match Figma Layers)
+- **Containers**: Prefix with `Layout_` (e.g., `Layout_chat`).
+- **Major Blocks**: Prefix with `Section_` (e.g., `Section_navbar`, `Section_chat`).
+- **Atoms/Components**: Prefix with `Comp_` (e.g., `Comp_logo`, `Comp_Button_Primary`).
+
+## 3. Typography
+- **Headings/Action Labels**: Use `font-roundo` (e.g., for the "send" button).
+- **Body/Chat/Placeholders**: Use `font-satoshi`.
+
+## 4. Glassmorphism (Cardzzz Variant)
+- Use `bg-white/10` with `backdrop-blur-md` and `border border-white/20` for interactive layers.
