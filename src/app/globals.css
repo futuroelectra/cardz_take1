@@ -25,12 +25,18 @@
   font-family: var(--font-roundo);
 }
 
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 body {
   /* This creates that deep red/purple gradient from your screenshots */
   background: radial-gradient(circle at center, #560000 0%, #220020 100%);
   color: var(--color-cardzzz-cream);
   font-family: var(--font-satoshi);
-  min-height: 100vh;
-  margin: 0;
   -webkit-font-smoothing: antialiased;
 }

@@ -1,10 +1,56 @@
 "use client";
 
+import { useChatLogic, Message } from "./useChatLogic";
+
+type Comp_Confirmation_RequestProps = {
+  message: Message;
+  onApprove: (id: string) => void;
+};
+
+function Comp_Confirmation_Request({
+  message,
+  onApprove,
+}: Comp_Confirmation_RequestProps) {
+  return (
+    <div className="Chat_bubble_ai flex flex-col items-start gap-[12px] max-w-[560px] p-[10px_15px] pb-[15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative">
+      <div className="BodyText w-full text-cardzzz-cream text-[14px] font-medium leading-normal relative font-satoshi break-words">
+        {message.text}
+      </div>
+      <button
+        type="button"
+        onClick={() => onApprove(message.id)}
+        className="Comp_Button-Primary_approve w-full flex items-center justify-center py-[10px] px-[15px] rounded-[16.168px] bg-cardzzz-cream text-cardzzz-accent font-roundo font-bold text-[15px] leading-normal cursor-pointer hover:opacity-90 transition-opacity border-none"
+      >
+        approve
+      </button>
+    </div>
+  );
+}
+
 export default function RawChat() {
+  const {
+    messages,
+    inputValue,
+    setInputValue,
+    sendMessage,
+    handleKeyDown,
+    handleInputChange,
+    scrollContainerRef,
+    textareaRef,
+  } = useChatLogic();
+
+  const handleApprove = (messageId: string, onApproved?: (id: string) => void) => {
+    // Placeholder for future navigation or side effects
+    console.log("Approved confirmation message:", messageId);
+    if (onApproved) {
+      onApproved(messageId);
+    }
+  };
+
   return (
     <div className="Layout_chat flex flex-col w-full h-screen bg-gradient-to-b from-cardzzz-wine to-cardzzz-blood overflow-hidden">
-      {/* Navbar Section - Centered */}
-      <div className="Section_navbar flex flex-col items-center gap-[10px] w-full h-[120px] p-[10px] relative">
+      {/* Navbar Section - Fixed height, no grow */}
+      <div className="Section_navbar flex flex-col items-center gap-[10px] w-full h-[120px] p-[10px] shrink-0">
         <div className="Navbar flex justify-between items-center h-[100px] w-full max-w-[1400px] px-[15px] py-[30px] shrink-0 relative mx-auto">
           {/* Logo */}
           <svg
@@ -74,67 +120,106 @@ export default function RawChat() {
           </div>
         </div>
 
-      {/* Chat Section - Scrollable middle area */}
-      <div className="Section_chat flex flex-col items-center flex-1 w-full overflow-y-auto overflow-x-hidden">
-        <div className="Section_Chat_Scroll_Area flex flex-col items-start gap-[5px] w-full max-w-[650px] min-w-[390px] px-[15px] py-[20px] relative">
-          {/* AI Chat Bubble */}
-          <div className="Chat_Bubble_Container flex flex-col justify-center items-start gap-[10px] w-full p-[5px_30px] relative">
-            <div className="Chat_bubble_ai flex items-start content-start gap-[10px] flex-wrap max-w-[560px] p-[10px_15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative">
-              <div className="BodyText max-w-[530px] text-cardzzz-cream text-[14px] font-medium leading-normal relative font-satoshi">
-                Hey I'm the creative assistant! How can I help you today?
-              </div>
+      {/* Chat Section - Scrollable middle area with flex-1 and alpha fade */}
+      <div
+        ref={scrollContainerRef}
+        className="Section_chat flex flex-col items-center flex-1 w-full overflow-y-auto overflow-x-hidden min-h-0"
+        style={{
+          WebkitMaskImage:
+            "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+          maskImage:
+            "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+        }}
+      >
+        <div className="Section_Chat_Scroll_Area flex flex-col items-start gap-[5px] w-full max-w-[650px] min-w-[390px] mx-auto px-[15px] pt-[2rem] pb-[30px]">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`Chat_Bubble_Container flex flex-col justify-center gap-[10px] w-full relative ${
+                message.sender === "user"
+                  ? "items-end p-[5px_30px] self-end"
+                  : "items-start p-[5px_30px] self-start"
+              }`}
+            >
+              {message.type === "confirmation" && message.sender === "ai" ? (
+                <Comp_Confirmation_Request
+                  message={message}
+                  onApprove={(id) => handleApprove(id)}
+                />
+              ) : (
+                <div
+                  className={`${
+                    message.sender === "user"
+                      ? "Chat_bubble_user"
+                      : "Chat_bubble_ai"
+                  } flex items-start content-start gap-[10px] flex-wrap max-w-[560px] p-[10px_15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative ${
+                    message.sender === "user" ? "ml-auto" : ""
+                  }`}
+                >
+                  <div
+                    className="BodyText max-w-[530px] text-cardzzz-cream text-[14px] font-medium leading-normal relative font-satoshi break-words"
+                    style={{ wordWrap: "break-word", overflowWrap: "break-word" }}
+                  >
+                    {message.text}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-
-          {/* User Chat Bubble */}
-          <div className="Chat_Bubble_Container flex flex-col justify-center items-end gap-[10px] w-full p-[5px_30px_5px_60px] relative">
-            <div className="Chat_bubble_user flex items-start content-start gap-[10px] flex-wrap max-w-[560px] p-[10px_15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative">
-              <div className="BodyText max-w-[530px] text-cardzzz-cream text-[14px] font-medium leading-normal relative font-satoshi">
-                This is a user message example
-              </div>
-            </div>
-          </div>
-
-          {/* Another AI Chat Bubble */}
-          <div className="Chat_Bubble_Container flex flex-col justify-center items-start gap-[10px] w-full p-[5px_30px] relative">
-            <div className="Chat_bubble_ai flex items-start content-start gap-[10px] flex-wrap max-w-[560px] p-[10px_15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative">
-              <div className="BodyText max-w-[530px] text-cardzzz-cream text-[14px] font-medium leading-normal relative font-satoshi">
-                I can help you with creative tasks, brainstorming, and more!
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* Input Container - Anchored to bottom */}
-      <div className="Section_Input_Container flex flex-col items-center w-full p-[15px] relative shrink-0">
-        <div className="Section_Input flex flex-col items-center gap-[64px] w-full max-w-[650px] min-w-[390px] px-[10px] pb-[10px] rounded-[20px] bg-white/10 backdrop-blur-md border border-white/20 overflow-hidden relative">
-          {/* Text Input */}
-          <div className="Comp_Text_Input flex justify-between items-center w-full relative">
-            <div className="PlaceholderText flex flex-col justify-center w-[222px] h-[49px] text-cardzzz-muted text-[14.551px] font-medium leading-normal relative font-satoshi">
-              <span className="font-medium text-[15px] text-cardzzz-muted font-satoshi">
-                Type your reply...
-              </span>
-            </div>
-            <div className="Comp_Voice flex justify-center items-center w-[28px] h-[28px] relative">
-              <img
-                src="/mic-icon.svg"
-                alt="Microphone icon"
-                width={24}
-                height={24}
-                className="relative"
-              />
+      {/* Input Container - Fixed height, no grow */}
+      <div className="Section_Input_Container flex flex-col items-center w-full p-[15px] shrink-0">
+        <div className="Section_Input flex flex-col items-center gap-[64px] w-full max-w-[650px] min-w-[390px] mx-auto px-[10px] pb-[10px] rounded-[20px] bg-white/10 backdrop-blur-md border border-white/20 overflow-hidden relative">
+          {/* Text Input with Icons Pinned to Top */}
+          <div className="Comp_Text_Input flex justify-between items-start w-full relative">
+            <textarea
+              ref={textareaRef}
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your reply..."
+              rows={1}
+              className="PlaceholderText flex flex-col justify-start w-full min-h-[49px] max-h-[200px] text-cardzzz-cream text-[14.551px] font-medium leading-normal relative font-satoshi bg-transparent border-none outline-none placeholder:text-cardzzz-muted resize-none overflow-y-auto pt-[12px] pb-[12px]"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "rgba(255, 250, 220, 0.3) transparent",
+              }}
+            />
+            <div className="flex items-start gap-[10px] relative pt-[12px]">
+              <div className="Comp_Attach flex justify-center items-center w-[28px] h-[28px] relative shrink-0">
+                <img
+                  src="/attach-icon.svg"
+                  alt="Attach icon"
+                  width={24}
+                  height={24}
+                  className="relative"
+                />
+              </div>
+              <div className="Comp_Voice flex justify-center items-center w-[28px] h-[28px] relative shrink-0">
+                <img
+                  src="/mic-icon.svg"
+                  alt="Microphone icon"
+                  width={24}
+                  height={24}
+                  className="relative"
+                />
+              </div>
             </div>
           </div>
 
           {/* Send Button */}
-          <div className="Comp_Button-Primary_active flex h-[54px] p-[20px_10px] justify-center items-center gap-[10px] w-full rounded-[16.168px] bg-cardzzz-cream shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] relative cursor-pointer hover:opacity-90 transition-opacity">
+          <button
+            onClick={sendMessage}
+            className="Comp_Button-Primary_active flex h-[54px] p-[20px_10px] justify-center items-center gap-[10px] w-full rounded-[16.168px] bg-cardzzz-cream shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] relative cursor-pointer hover:opacity-90 transition-opacity border-none"
+          >
             <div className="Label text-cardzzz-accent text-center text-[19.401px] font-bold leading-normal relative font-roundo">
               <span className="font-bold text-[19px] text-cardzzz-accent font-roundo">
                 send
               </span>
             </div>
-          </div>
+          </button>
         </div>
       </div>
     </div>
