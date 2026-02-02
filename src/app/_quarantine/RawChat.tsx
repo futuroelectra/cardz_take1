@@ -1,6 +1,11 @@
 "use client";
 
+import { useState, useRef } from "react";
 import { useChatLogic, Message } from "./useChatLogic";
+import RawLoadingSignup from "./RawLoadingSignup";
+import RawEditorChat from "./RawEditorChat";
+import RawPaywallModal from "./RawPaywallModal";
+import RawNavMenuModal from "./RawNavMenuModal";
 
 type Comp_Confirmation_RequestProps = {
   message: Message;
@@ -27,7 +32,49 @@ function Comp_Confirmation_Request({
   );
 }
 
+type Comp_Export_RequestProps = {
+  message: Message;
+  onExport: (id: string) => void;
+};
+
+function Comp_Export_Request({
+  message,
+  onExport,
+}: Comp_Export_RequestProps) {
+  return (
+    <div className="Chat_bubble_ai flex flex-col items-start gap-[12px] max-w-[560px] p-[10px_15px] pb-[15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative">
+      <div className="BodyText w-full text-cardzzz-cream text-[14px] font-medium leading-normal relative font-satoshi break-words">
+        {message.text}
+      </div>
+      <button
+        type="button"
+        onClick={() => onExport(message.id)}
+        className="Comp_Button-Primary_export w-full flex items-center justify-center py-[10px] px-[15px] rounded-[16.168px] bg-cardzzz-cream text-cardzzz-accent font-roundo font-bold text-[15px] leading-normal cursor-pointer hover:opacity-90 transition-opacity border-none"
+      >
+        export
+      </button>
+    </div>
+  );
+}
+
 export default function RawChat() {
+  const [currentScreen, setCurrentScreen] = useState<"chat" | "signup" | "editor">("chat");
+  const [hasAttachedFile, setHasAttachedFile] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuIconRef = useRef<HTMLButtonElement>(null);
+  
+  const handlePopTrigger = () => {
+    setIsPaywallOpen(true);
+  };
+
+  const handlePay = () => {
+    // TODO: Implement payment logic
+    console.log("Payment initiated");
+    setIsPaywallOpen(false);
+  };
+  
   const {
     messages,
     inputValue,
@@ -37,15 +84,42 @@ export default function RawChat() {
     handleInputChange,
     scrollContainerRef,
     textareaRef,
-  } = useChatLogic();
+  } = useChatLogic(handlePopTrigger);
+
+  // Determine if button should be active
+  const isButtonActive = inputValue.trim().length > 0 || hasAttachedFile || isRecording;
+
+  // Placeholder handlers for future features
+  const handleFileAttach = () => {
+    // TODO: Implement file attachment
+    setHasAttachedFile(!hasAttachedFile);
+  };
+
+  const handleVoiceRecord = () => {
+    // TODO: Implement voice recording
+    setIsRecording(!isRecording);
+  };
 
   const handleApprove = (messageId: string, onApproved?: (id: string) => void) => {
-    // Placeholder for future navigation or side effects
     console.log("Approved confirmation message:", messageId);
+    setCurrentScreen("signup");
     if (onApproved) {
       onApproved(messageId);
     }
   };
+
+  const handleExport = (messageId: string) => {
+    console.log("Export requested for message:", messageId);
+    // TODO: Implement export logic
+  };
+
+  if (currentScreen === "signup") {
+    return <RawLoadingSignup onNavigateToEditor={() => setCurrentScreen("editor")} />;
+  }
+
+  if (currentScreen === "editor") {
+    return <RawEditorChat />;
+  }
 
   return (
     <div className="Layout_chat flex flex-col w-full h-screen bg-gradient-to-b from-cardzzz-wine to-cardzzz-blood overflow-hidden">
@@ -91,32 +165,52 @@ export default function RawChat() {
               />
             </svg>
 
-            {/* Menu Icon */}
-            <svg
-              className="Comp_menu_icon relative"
-              width="35"
-              height="35"
-              viewBox="0 0 35 35"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+            {/* Menu Icon Button - Stays visible above backdrop blur */}
+            <button
+              ref={menuIconRef}
+              type="button"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="Comp_menu_button relative z-[60] w-[35px] h-[35px] flex items-center justify-center cursor-pointer transition-all duration-200 hover:opacity-80"
+              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
             >
-              <path
-                d="M35 17.5C35 27.165 27.165 35 17.5 35C7.83502 35 0 27.165 0 17.5C0 7.83502 7.83502 0 17.5 0C27.165 0 35 7.83502 35 17.5Z"
-                fill="#FFFADC"
-              />
-              <path
-                d="M9.864 25.4875L9.468 22.6495H25V25.4875H9.864Z"
-                fill="#220020"
-              />
-              <path
-                d="M9.864 18.9305L9.468 16.0925H25V18.9305H9.864Z"
-                fill="#220020"
-              />
-              <path
-                d="M9.864 12.3735L9.468 9.53548H25V12.3735H9.864Z"
-                fill="#220020"
-              />
-            </svg>
+              {isMenuOpen ? (
+                // Exit Icon (using exit-icon.svg)
+                <img
+                  src="/exit-icon.svg"
+                  alt="Close menu"
+                  width={35}
+                  height={35}
+                  className="relative transition-all duration-200"
+                />
+              ) : (
+                // Menu Icon (Hamburger)
+                <svg
+                  className="Comp_menu_icon relative transition-all duration-200"
+                  width="35"
+                  height="35"
+                  viewBox="0 0 35 35"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M35 17.5C35 27.165 27.165 35 17.5 35C7.83502 35 0 27.165 0 17.5C0 7.83502 7.83502 0 17.5 0C27.165 0 35 7.83502 35 17.5Z"
+                    fill="#FFFADC"
+                  />
+                  <path
+                    d="M9.864 25.4875L9.468 22.6495H25V25.4875H9.864Z"
+                    fill="#220020"
+                  />
+                  <path
+                    d="M9.864 18.9305L9.468 16.0925H25V18.9305H9.864Z"
+                    fill="#220020"
+                  />
+                  <path
+                    d="M9.864 12.3735L9.468 9.53548H25V12.3735H9.864Z"
+                    fill="#220020"
+                  />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
 
@@ -145,6 +239,11 @@ export default function RawChat() {
                 <Comp_Confirmation_Request
                   message={message}
                   onApprove={(id) => handleApprove(id)}
+                />
+              ) : message.type === "export" && message.sender === "ai" ? (
+                <Comp_Export_Request
+                  message={message}
+                  onExport={(id) => handleExport(id)}
                 />
               ) : (
                 <div
@@ -188,7 +287,13 @@ export default function RawChat() {
               }}
             />
             <div className="flex items-start gap-[10px] relative pt-[12px]">
-              <div className="Comp_Attach flex justify-center items-center w-[28px] h-[28px] relative shrink-0">
+              <button
+                type="button"
+                onClick={handleFileAttach}
+                className={`Comp_Attach flex justify-center items-center w-[28px] h-[28px] relative shrink-0 cursor-pointer transition-opacity hover:opacity-80 ${
+                  hasAttachedFile ? "opacity-100" : "opacity-60"
+                }`}
+              >
                 <img
                   src="/attach-icon.svg"
                   alt="Attach icon"
@@ -196,8 +301,14 @@ export default function RawChat() {
                   height={24}
                   className="relative"
                 />
-              </div>
-              <div className="Comp_Voice flex justify-center items-center w-[28px] h-[28px] relative shrink-0">
+              </button>
+              <button
+                type="button"
+                onClick={handleVoiceRecord}
+                className={`Comp_Voice flex justify-center items-center w-[28px] h-[28px] relative shrink-0 cursor-pointer transition-opacity hover:opacity-80 ${
+                  isRecording ? "opacity-100" : "opacity-60"
+                }`}
+              >
                 <img
                   src="/mic-icon.svg"
                   alt="Microphone icon"
@@ -205,23 +316,41 @@ export default function RawChat() {
                   height={24}
                   className="relative"
                 />
-              </div>
+              </button>
             </div>
           </div>
 
           {/* Send Button */}
           <button
+            type="button"
             onClick={sendMessage}
-            className="Comp_Button-Primary_active flex h-[54px] p-[20px_10px] justify-center items-center gap-[10px] w-full rounded-[16.168px] bg-cardzzz-cream shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] relative cursor-pointer hover:opacity-90 transition-opacity border-none"
+            disabled={!isButtonActive}
+            className={`Comp_Button-Primary w-full h-[54px] py-[20px] px-[10px] flex items-center justify-center gap-[10px] rounded-[16.168px] border transition-all ${
+              isButtonActive
+                ? "bg-cardzzz-cream text-cardzzz-accent border-cardzzz-cream/50 shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] cursor-pointer hover:opacity-90"
+                : "border-cardzzz-cream bg-transparent text-cardzzz-cream cursor-not-allowed"
+            }`}
           >
-            <div className="Label text-cardzzz-accent text-center text-[19.401px] font-bold leading-normal relative font-roundo">
-              <span className="font-bold text-[19px] text-cardzzz-accent font-roundo">
-                send
-              </span>
-            </div>
+            <span className="Label text-center font-roundo font-bold text-[19px] leading-normal relative">
+              send
+            </span>
           </button>
         </div>
       </div>
+
+      {/* Paywall Modal */}
+      <RawPaywallModal
+        isOpen={isPaywallOpen}
+        onClose={() => setIsPaywallOpen(false)}
+        onPay={handlePay}
+      />
+
+      {/* Navigation Menu Modal */}
+      <RawNavMenuModal
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        menuIconRef={menuIconRef}
+      />
     </div>
   );
 }

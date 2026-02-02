@@ -11,9 +11,64 @@ alwaysApply: true
   - Background: `bg-white/10` or `bg-black/20`
   - Blur: `backdrop-blur-md`
   - Border: `border border-white/20`
+- **Button States Pattern**: 
+  - **Inactive State** (disabled/not ready): 
+    - Border: `border border-cardzzz-cream` (100% opaque)
+    - Background: `bg-transparent`
+    - Text: `text-cardzzz-cream` (100% opaque)
+    - Cursor: `cursor-not-allowed`
+    - No shadow
+    - Example: Submit buttons when form is invalid, action buttons before conditions are met
+  - **Active State** (enabled/ready): 
+    - Background: `bg-cardzzz-cream`
+    - Text: `text-cardzzz-accent` (red/accent color)
+    - Border: `border border-cardzzz-cream/50` (optional, for subtle definition)
+    - Shadow: `shadow-[0_4px_4px_0_rgba(0,0,0,0.25)]`
+    - Cursor: `cursor-pointer`
+    - Hover: `hover:opacity-90`
+    - Example: Submit buttons when form is valid, action buttons ready to proceed
+  - **Base Classes**: All buttons should include: 
+    - `rounded-[16.168px]` (or appropriate border radius)
+    - `transition-all` for smooth state changes
+    - `font-roundo font-bold text-[19px]` for button labels
+    - Height: `h-[54px]` (standard button height)
+    - Padding: `py-[20px] px-[10px]`
+- **Button States Implementation Example**:
+```tsx
+<button
+  type="submit"
+  disabled={!isFormValid}
+  className={`Comp_Button w-full h-[54px] py-[20px] px-[10px] flex items-center justify-center gap-[10px] rounded-[16.168px] border transition-all ${
+    isFormValid
+      ? "bg-cardzzz-cream text-cardzzz-accent border-cardzzz-cream/50 shadow-[0_4px_4px_0_rgba(0,0,0,0.25)] cursor-pointer hover:opacity-90"
+      : "border-cardzzz-cream bg-transparent text-cardzzz-cream cursor-not-allowed"
+  }`}
+>
+  <span className="Label text-center font-roundo font-bold text-[19px] leading-normal relative">
+    button label
+  </span>
+</button>
+```
+- **Button States Usage**: 
+  - Use **Inactive State** when: 
+    - Form validation fails
+    - Required conditions are not met
+    - Action cannot be performed yet
+    - User needs to complete a prerequisite step
+  - Use **Active State** when: 
+    - All validation passes
+    - Action is ready to be performed
+    - User can proceed with the action
+    - All required fields/data are present
+- **Future Component Extraction**: 
+  - Consider creating a `Comp_Button_Primary` component that accepts: 
+    - `disabled` or `isActive` prop
+    - `children` for button label
+    - `onClick` handler
+    - Automatically applies correct styling based on state
+  - This pattern should be consistent across all primary action buttons in the app
 - **Naming Convention**: 
   - `Comp_`: Reusable atoms (Buttons, Badges)
   - `Layout_`: Page-level containers
   - `Chat_`: Chat-specific elements
 - **Precision**: If design uses 13px, use Tailwind arbitrary values `p-[13px]`.
-r

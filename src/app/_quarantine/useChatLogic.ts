@@ -6,11 +6,11 @@ export type Message = {
   id: string;
   text: string;
   sender: "user" | "ai";
-  type?: "confirmation";
+  type?: "confirmation" | "export";
   timestamp: Date;
 };
 
-export function useChatLogic() {
+export function useChatLogic(onPopTrigger?: () => void) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -32,9 +32,17 @@ export function useChatLogic() {
 
   // Mock response function
   const sendMockResponse = useCallback((userMessageText: string) => {
+    const trimmedText = userMessageText.toLowerCase().trim();
+    
+    // Check for "pop" trigger (case-insensitive, exact match)
+    if (trimmedText === "pop") {
+      onPopTrigger?.();
+      return; // Don't send AI response for "pop"
+    }
+    
     setTimeout(() => {
       // Check if user message contains "confirmation" (case-insensitive)
-      if (userMessageText.toLowerCase().includes("confirmation")) {
+      if (trimmedText.includes("confirmation")) {
         const confirmationMessage: Message = {
           id: `confirmation-${Date.now()}`,
           text: "Here's a creative summary of our conversation. Would you like to proceed?",
@@ -43,6 +51,16 @@ export function useChatLogic() {
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, confirmationMessage]);
+      } else if (trimmedText.includes("export")) {
+        // Check if user message contains "export" (case-insensitive)
+        const exportMessage: Message = {
+          id: `export-${Date.now()}`,
+          text: "Please confirm details below and hit export when ready",
+          sender: "ai",
+          type: "export",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, exportMessage]);
       } else {
         const aiMessage: Message = {
           id: `ai-${Date.now()}`,
@@ -53,7 +71,7 @@ export function useChatLogic() {
         setMessages((prev) => [...prev, aiMessage]);
       }
     }, 500);
-  }, []);
+  }, [onPopTrigger]);
 
   // Send message function
   const sendMessage = useCallback(() => {
