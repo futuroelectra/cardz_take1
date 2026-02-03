@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useChatLogic, Message } from "./useChatLogic";
+import { useChatLogic, Message, type CreativeSummary } from "./useChatLogic";
 import RawLoadingSignup from "./RawLoadingSignup";
 import RawEditorChat from "./RawEditorChat";
+import RawAuthModal from "./RawAuthModal";
 import RawPaywallModal from "./RawPaywallModal";
 import RawNavMenuModal from "./RawNavMenuModal";
 
@@ -61,6 +62,11 @@ export default function RawChat() {
   const [currentScreen, setCurrentScreen] = useState<"chat" | "signup" | "editor">("chat");
   const [hasAttachedFile, setHasAttachedFile] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [pendingCreativeSummary, setPendingCreativeSummary] = useState<CreativeSummary | null>(null);
+  const [createdCardId, setCreatedCardId] = useState<string | null>(null);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuIconRef = useRef<HTMLButtonElement>(null);
@@ -69,10 +75,20 @@ export default function RawChat() {
     setIsPaywallOpen(true);
   };
 
-  const handlePay = () => {
-    // TODO: Implement payment logic
-    console.log("Payment initiated");
-    setIsPaywallOpen(false);
+  const handlePay = async () => {
+    try {
+      const res = await fetch("/api/paywall/checkout?type=creation", {
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+      setAuthError(data.error || "Could not start checkout");
+    } catch {
+      setAuthError("Network error");
+    }
   };
   
   const {
@@ -100,11 +116,57 @@ export default function RawChat() {
     setIsRecording(!isRecording);
   };
 
-  const handleApprove = (messageId: string, onApproved?: (id: string) => void) => {
-    console.log("Approved confirmation message:", messageId);
-    setCurrentScreen("signup");
-    if (onApproved) {
-      onApproved(messageId);
+  const handleApprove = (messageId: string) => {
+    const msg = messages.find((m) => m.id === messageId);
+    const summary = msg?.creativeSummary;
+    if (summary) setPendingCreativeSummary(summary);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleAuthSubmit = async (email: string, password: string) => {
+    setAuthError(null);
+    setIsAuthLoading(true);
+    try {
+      const res = await fetch("/api/auth/register-or-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAuthError(data.error || "Something went wrong");
+        return;
+      }
+      setIsAuthModalOpen(false);
+      if (pendingCreativeSummary) {
+        const createRes = await fetch("/api/cards/from-summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ creativeSummary: pendingCreativeSummary }),
+        });
+        const createData = await createRes.json().catch(() => ({}));
+        if (createRes.status === 402 && createData.requiresPayment) {
+          setPendingCreativeSummary(null);
+          setIsPaywallOpen(true);
+          return;
+        }
+        if (createRes.ok && createData.id) {
+          setCreatedCardId(createData.id);
+          setCurrentScreen("editor");
+        } else {
+          setAuthError(createData.error || "Could not create card");
+          setCurrentScreen("chat");
+        }
+        setPendingCreativeSummary(null);
+      } else {
+        setCurrentScreen("signup");
+      }
+    } catch {
+      setAuthError("Network error");
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
@@ -118,7 +180,7 @@ export default function RawChat() {
   }
 
   if (currentScreen === "editor") {
-    return <RawEditorChat />;
+    return <RawEditorChat cardId={createdCardId} />;
   }
 
   return (
@@ -238,7 +300,7 @@ export default function RawChat() {
               {message.type === "confirmation" && message.sender === "ai" ? (
                 <Comp_Confirmation_Request
                   message={message}
-                  onApprove={(id) => handleApprove(id)}
+                  onApprove={handleApprove}
                 />
               ) : message.type === "export" && message.sender === "ai" ? (
                 <Comp_Export_Request
@@ -337,6 +399,18 @@ export default function RawChat() {
           </button>
         </div>
       </div>
+
+      {/* Auth Modal (Sign up / Sign in) */}
+      <RawAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setAuthError(null);
+        }}
+        onSignUp={handleAuthSubmit}
+        onSignIn={handleAuthSubmit}
+        error={authError}
+      />
 
       {/* Paywall Modal */}
       <RawPaywallModal

@@ -2,11 +2,25 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 
+/** Creative Summary from Collector (used when type is "confirmation"). */
+export type CreativeSummary = {
+  occasion: string;
+  receiverPersonality: string;
+  emotionalVibe: string;
+  subjectIdea: string;
+  subjectType: "avatar" | "inanimate";
+  subjectSource: "upload" | "text" | null;
+  interactionIdeas: string[];
+  welcomeMessage: string;
+};
+
 export type Message = {
   id: string;
   text: string;
   sender: "user" | "ai";
   type?: "confirmation" | "export";
+  /** Set when type is "confirmation" and Collector returned a Creative Summary. */
+  creativeSummary?: CreativeSummary;
   timestamp: Date;
 };
 
@@ -20,6 +34,7 @@ export function useChatLogic(onPopTrigger?: () => void) {
     },
   ]);
   const [inputValue, setInputValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
@@ -30,50 +45,19 @@ export function useChatLogic(onPopTrigger?: () => void) {
     }
   }, [messages]);
 
-  // Mock response function
-  const sendMockResponse = useCallback((userMessageText: string) => {
-    const trimmedText = userMessageText.toLowerCase().trim();
-    
-    // Check for "pop" trigger (case-insensitive, exact match)
-    if (trimmedText === "pop") {
-      onPopTrigger?.();
-      return; // Don't send AI response for "pop"
-    }
-    
-    setTimeout(() => {
-      // Check if user message contains "confirmation" (case-insensitive)
-      if (trimmedText.includes("confirmation")) {
-        const confirmationMessage: Message = {
-          id: `confirmation-${Date.now()}`,
-          text: "Here's a creative summary of our conversation. Would you like to proceed?",
-          sender: "ai",
-          type: "confirmation",
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, confirmationMessage]);
-      } else if (trimmedText.includes("export")) {
-        // Check if user message contains "export" (case-insensitive)
-        const exportMessage: Message = {
-          id: `export-${Date.now()}`,
-          text: "Please confirm details below and hit export when ready",
-          sender: "ai",
-          type: "export",
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, exportMessage]);
-      } else {
-        const aiMessage: Message = {
-          id: `ai-${Date.now()}`,
-          text: "I received your message!",
-          sender: "ai",
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, aiMessage]);
-      }
-    }, 500);
-  }, [onPopTrigger]);
+  const sendToCollector = useCallback(
+    async (apiMessages: { role: "user" | "assistant"; content: string }[]) => {
+      const res = await fetch("/api/chat/collector", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: apiMessages }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return data as { message?: string; creativeSummary?: CreativeSummary };
+    },
+    []
+  );
 
-  // Send message function
   const sendMessage = useCallback(() => {
     const trimmedValue = inputValue.trim();
     if (!trimmedValue) return;
@@ -87,15 +71,59 @@ export function useChatLogic(onPopTrigger?: () => void) {
 
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
-    
-    // Reset textarea height after sending
+
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = "49px"; // Reset to min height
+      textareaRef.current.style.height = "49px";
     }
-    
-    sendMockResponse(trimmedValue);
-  }, [inputValue, sendMockResponse]);
+
+    const trimmedLower = trimmedValue.toLowerCase().trim();
+    if (trimmedLower === "pop") {
+      onPopTrigger?.();
+      return;
+    }
+
+    setIsLoading(true);
+    const conversationSoFar = [...messages, userMessage]
+      .filter((m) => m.type !== "confirmation" && m.type !== "export")
+      .map((m) => ({
+        role: m.sender as "user" | "assistant",
+        content: m.text,
+      }));
+
+    sendToCollector(conversationSoFar)
+      .then(({ message, creativeSummary }) => {
+        const assistantText = message ?? "I didn't get a response. Try again.";
+        const aiMessage: Message = {
+          id: `ai-${Date.now()}`,
+          text: assistantText,
+          sender: "ai",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        if (creativeSummary) {
+          const confirmationMessage: Message = {
+            id: `confirmation-${Date.now()}`,
+            text: "Here's your dream-card summary. Approve to create your card and open the editor.",
+            sender: "ai",
+            type: "confirmation",
+            creativeSummary,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, confirmationMessage]);
+        }
+      })
+      .catch(() => {
+        const errorMessage: Message = {
+          id: `ai-${Date.now()}`,
+          text: "Something went wrong. Please try again.",
+          sender: "ai",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      })
+      .finally(() => setIsLoading(false));
+  }, [inputValue, messages, onPopTrigger, sendToCollector]);
 
   // Handle Enter key (Shift+Enter for new line, Enter to send)
   const handleKeyDown = useCallback(
@@ -134,5 +162,6 @@ export function useChatLogic(onPopTrigger?: () => void) {
     handleInputChange,
     scrollContainerRef,
     textareaRef,
+    isLoading,
   };
 }

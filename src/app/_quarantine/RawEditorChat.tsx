@@ -55,7 +55,12 @@ function Comp_Export_Request({
   );
 }
 
-export default function RawEditorChat() {
+type RawEditorChatProps = {
+  /** When set, load this card for preview and Adjuster. */
+  cardId?: string | null;
+};
+
+export default function RawEditorChat({ cardId }: RawEditorChatProps = {}) {
   const [hasAttachedFile, setHasAttachedFile] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
