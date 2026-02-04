@@ -1,0 +1,22 @@
+---
+description: Always manage dependencies via CLI; never manually edit package.json for dependencies
+globs: package.json, package-lock.json
+alwaysApply: true
+---
+# Dependencies and package.json
+
+## Rule: Use the CLI for dependencies
+
+- **Never manually add, remove, or edit dependency entries** in `package.json` (dependencies or devDependencies). Always use the package manager from the command line.
+- **Install:** `npm install <package>` (runtime) or `npm install -D <package>` (dev). Use exact or semver as needed, e.g. `npm install openai@^4.73.0`.
+- **Remove:** `npm uninstall <package>` (or `-D` for dev). Do not delete lines from package.json by hand.
+- **Upgrade:** `npm update <package>` or re-run `npm install <package>@<version>`.
+
+## When package.json may be edited by hand
+
+- **Scripts only:** Adding, changing, or removing entries under `"scripts"` is allowed (e.g. new npm run commands).
+- **Other fields:** Name, version, private, engines, etc. may be edited when intentionally changing project metadata.
+
+## Rationale
+
+CLI updates keep lockfile and dependency tree correct, avoid typos, and respect the project’s chosen package manager. Manual edits risk inconsistent lockfiles and broken installs.

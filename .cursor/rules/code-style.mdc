@@ -1,0 +1,38 @@
+---
+description: File size limits, commenting, and code layout standards (industry-aligned)
+globs: src/**/*.ts, src/**/*.tsx
+alwaysApply: true
+---
+# Code Style and File Layout
+
+Apply these standards for consistency and maintainability. Align with common 2025–2026 practice: small files, clear comments, explicit structure.
+
+## File size and scope
+
+- **Target:** Single-purpose files. Prefer **&lt; 250 lines** per file; split before **~400 lines** unless the unit is a single cohesive abstraction (e.g. one large but linear workflow).
+- **Split when:** A file gains multiple distinct responsibilities, a component has many sub-components, or a module mixes unrelated helpers. Extract to new files under the same or appropriate directory.
+- **One main export per file** for components (see [directory-structure-naming.mdc](.cursor/rules/directory-structure-naming.mdc)). Types/utils can have multiple named exports when they belong together.
+
+## Comments
+
+- **File header:** One short JSDoc or block comment at the top describing the file’s role (e.g. “Agent 1: Collector. Gathers just enough from sender chat.”). Omit if the file path and export name are self-explanatory.
+- **Inline comments:** Use for non-obvious “why” or constraints, not for restating the code. Prefer `//` for single lines; avoid noise.
+- **JSDoc:** Use for public APIs (exported functions, hooks, types) when parameters or return shape are not obvious from TypeScript. Include `@param` / `@returns` when it helps.
+- **TODOs:** Use `// TODO: <short description>` only for tracked follow-ups; resolve or ticket before production. No stray TODOs in shipped paths (see [non-functional-requirements.mdc](.cursor/rules/non-functional-requirements.mdc)).
+
+## Layout and order
+
+- **Imports:** Group and order: 1) React / Next, 2) external packages (alphabetical or by usage), 3) `@/` aliases (lib, components, hooks), 4) relative. One blank line between groups.
+- **Exports:** Prefer `export default` for the main component or primary API; use named exports for types, hooks, and secondary exports.
+- **Structure inside a file:** Constants/config → types → helpers → main component or API. Keep related logic adjacent; avoid large jumps.
+
+## Formatting and style
+
+- **Quotes:** Prefer double quotes for strings unless the string contains doubles or the project linter enforces single.
+- **Semicolons:** Use them (matches typical TypeScript/Next config).
+- **Naming:** camelCase for variables/functions; PascalCase for components and types; UPPER_SNAKE for constants that are truly constant.
+- **Async:** Prefer `async/await` over raw Promises. Handle errors in try/catch or by returning Result-like shapes where appropriate.
+
+## Coordination
+
+This rule complements [directory-structure-naming.mdc](.cursor/rules/directory-structure-naming.mdc) (where files live and how they’re named) and [ui-styling.mdc](.cursor/rules/ui-styling.mdc) (UI-specific patterns). It does not override project ESLint/Prettier; follow existing formatter config.

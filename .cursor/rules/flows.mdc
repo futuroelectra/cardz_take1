@@ -1,0 +1,24 @@
+---
+description: The app consists of exactly three flows; no additional or hallucinated flows
+globs: src/**/*.tsx, docs/**/*.md
+alwaysApply: true
+---
+# Application Flows
+
+The product has **exactly three user flows**. Do not add, assume, or implement a fourth flow (or any other flow) unless the spec and this rule are explicitly updated.
+
+## The three flows
+
+1. **Sender flow**: User lands on chat (**Agent 1: Collector**), has a short conversation (just enough for a creative summary), approves first draft, optionally signs in or skips; **Agent 2: Architect** and **Agent 3: Engineer** produce the build; user enters the editor (**Agent 4: Iterator**), iterates (with token/iteration limits and paywall), exports (with sign-up/payment if needed), then shares via a bottom sheet (email, WhatsApp, iMessage).
+2. **Receiver flow**: User receives a link (email, WhatsApp, or iMessage), opens a **private** card view, claims the card (passphrase or sign-up), activates for 48 hours, views the card and interacts with buttons (notifications from sender if configured).
+3. **Returning user flow**: User lands on chat (same as sender entry), can open the menu and go to **collection** (library) or **settings**. In library, they see sent/received cards; clicking an expired card shows the activate modal ($5 or subscribe). Settings covers profile, password, subscription, notifications, and account management.
+
+## Four agents (backend)
+
+Backend MUST implement exactly four agents in order: **Collector** (chat, creative summary) → **Architect** (blueprint JSON) → **Engineer** (code) → **Iterator** (editor chat; minor iterations; rebuild when threshold exceeded). See `docs/MASTER_PROMPT_BACKEND.md` §5 for full definitions and MUSTs.
+
+## Rules
+
+- **No hallucinated flows**: When implementing or generating code, do not introduce flows (e.g. "admin flow", "guest flow", "onboarding flow") that are not listed above.
+- **New flows**: If a new flow is ever added, it must be documented in the master prompt (`docs/MASTER_PROMPT_BACKEND.md`), in the flow diagrams, and in this cursor rule.
+- **References**: When in doubt, resolve behavior by checking the master prompt and the three flow diagrams (sender, receiver, returning user).

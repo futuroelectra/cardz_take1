@@ -1,0 +1,41 @@
+---
+description: Why element maps exist, how we build them, and how they are standardized
+globs: docs/**/*.md, src/**/*.tsx
+alwaysApply: false
+---
+# Element Maps
+
+Element maps are the standard way we document which UI elements trigger which actions and backend behavior. They exist so that implementation (human or automated) can one-shot wiring without ambiguity.
+
+## Purpose
+
+- **Reproducibility**: Any reader (or LLM) can see exactly which button, in which component, does what and what the backend must do.
+- **One-shot implementation**: Backend and front-end wiring can be implemented from the map without guessing.
+- **Traceability**: Every meaningful user action (click, submit, etc.) is tied to a component, element (class or label), and backend requirement.
+
+## Standard format
+
+Each entry follows:
+
+**Page or modal** → **Component (file)** → **Element (class or label)** → **Action** → **Backend**
+
+Example:
+
+- `Chat` → `Chat.tsx` → `Comp_Button-Primary_approve` (label "approve") → On click: persist approval, optionally show sign-in modal or go to editor → Backend: session/card state, auth check.
+
+## When to create or update element maps
+
+- **New screen or modal**: Before or as you implement, add an element map entry for every interactive element (buttons, links, form submits).
+- **New flow or variant**: Update the master prompt’s element map section and any flow-specific tables.
+- **Refactors**: If you rename a component or move it, update the element map so paths and names stay accurate.
+
+## Where they live
+
+- The **master prompt** (`docs/MASTER_PROMPT_BACKEND.md`) contains the full element map for the three flows (sender, receiver, returning user), plus modals and shared components.
+- This cursor rule defines the format and process; it does not replace the master prompt’s map.
+
+## CSS classes and labels
+
+- Prefer the **exact class names** used in code (e.g. `Comp_Button-Primary_approve`, `Comp_NavMenu_Link`) when documenting.
+- When a class is generic, use the **visible label** (e.g. label "approve", "send", "create account") so the element is uniquely identifiable.
+- Follow the naming convention in `ui-styling.mdc` (`Comp_`, `Layout_`, `Chat_`) so element names stay consistent.

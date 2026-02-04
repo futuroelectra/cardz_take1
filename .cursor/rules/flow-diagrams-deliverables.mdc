@@ -1,0 +1,31 @@
+---
+description: How we approach mermaid flow diagrams (required for every flow) and how deliverables (e.g. master doc) are laid out
+globs: docs/**/*.md, .cursor/**/*
+alwaysApply: true
+---
+# Flow Diagrams and Deliverables
+
+Flow diagrams are **required**, not optional. The master prompt and any flow-level spec must include mermaid diagrams. Deliverables (e.g. the master doc) have a fixed structure so that automation and LLMs can rely on it.
+
+## Flow diagrams (required)
+
+- **Every flow must have a mermaid diagram**: Sender, receiver, and returning user flows must each be documented with a mermaid flowchart or sequence diagram in the master prompt.
+- **Content**: The diagram must cover the main steps (e.g. land on chat → approve → editor → iterate → export → share for sender; link → claim → activate → view → submit for receiver; land → menu → library/settings for returning user).
+- **Where**: Diagrams live in `docs/MASTER_PROMPT_BACKEND.md` in the section dedicated to flow diagrams (see Deliverables below).
+- **Mermaid rules**: Use the project’s mermaid conventions (e.g. no spaces in node IDs, use camelCase or PascalCase; no HTML in labels; avoid reserved words like `end`). See the plan or master doc for the exact syntax rules.
+
+## Master prompt / master doc
+
+- **Single file**: The canonical backend-and-front-end spec is one document: `docs/MASTER_PROMPT_BACKEND.md` (or the path specified in the plan).
+- **Sections** (in order): (1) Purpose and design reference, (2) Routes and components, (3) Sender flow with element map, (4) Receiver flow with element map, (5) Returning user flow with element map, (6) Modals and variants, (7) Notifications and async behavior, (8) Security and reuse, (9) **Required** mermaid flow diagrams.
+- **Tone**: Directive and unambiguous (e.g. "When the user clicks the button labeled 'approve' in Comp_Button-Primary_approve inside Chat, the backend MUST ..."). No room for interpretation on critical paths.
+- **References**: The master doc points to `.cursor/rules/ui-styling.mdc` and `.cursor/rules/cursor-rules.mdc` as the single source of truth for design; it also references the other cursor rules (flows, element maps, modals, notifications, NFRs, directory structure) so that implementation and automation stay consistent.
+
+## Deliverables checklist
+
+When producing or updating the master prompt or flow-level docs:
+
+1. Include all three mermaid flow diagrams (sender, receiver, returning user).
+2. Keep the section order and naming above so that scripts or agents can parse the doc predictably.
+3. Update the element map whenever a new screen, modal, or button is added.
+4. Do not remove or make optional the flow diagrams section; it is required.

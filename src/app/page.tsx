@@ -1,5 +1,5 @@
-import RawChat from "./_quarantine/RawChat";
+import Chat from "@/components/Chat";
 
 export default function Home() {
-  return <RawChat />;
+  return <Chat />;
 }

@@ -1,0 +1,46 @@
+---
+description: How we structure directories, name files, components, and exports for easy reproduction
+globs: src/**/*
+alwaysApply: true
+---
+# Directory Structure and Naming
+
+Use this rule so any new flow or screen follows the same layout and naming conventions. The goal is an easy-to-reproduce system.
+
+## 1. Directory structure
+
+- **`src/app/`**: Next.js App Router. Use only for route segments and `page.tsx`, `layout.tsx`, and app-specific files (e.g. `globals.css`). Do not put reusable UI here.
+- **`src/components/`**: Reusable UI components (pages, modals, sections). One component per file. No `_quarantine` or temporary folders; all components live in the main structure.
+- **`src/hooks/`**: Shared React hooks (e.g. `useChatLogic.ts`). One hook per file.
+- **`docs/`**: Project documentation and master prompts (e.g. `MASTER_PROMPT_BACKEND.md`).
+
+Route pages in `src/app/*/page.tsx` should import from `@/components/` and `@/hooks/` only. Do not import from `_quarantine` or legacy paths.
+
+## 2. File naming
+
+- **Format**: kebab-case.
+- **No prefixes**: Do not use prefixes like `Raw` (e.g. use `Chat.tsx`, not `RawChat.tsx`).
+- **Descriptive**: File name should reflect the component’s purpose (e.g. `LoadingSignup.tsx`, `NavMenuModal.tsx`, `PaywallModal.tsx`).
+- **One main export per file**: The default export should match the component name (e.g. `Chat.tsx` exports `Chat`).
+
+## 3. Component naming
+
+- **PascalCase**: All React components use PascalCase (e.g. `Chat`, `EditorChat`, `LoadingSignup`, `NavMenuModal`).
+- **Intuitive**: Names should be self-explanatory so that new contributors and agents can find and use them without guessing (e.g. `ActivateModal` not `Modal2`).
+
+## 4. Exports
+
+- **Default export**: Each component file should have a single default export with the same name as the file (e.g. `export default function Chat()` in `Chat.tsx`).
+- **Named exports**: Use for types, hooks, or sub-components only when needed (e.g. `export type Message`, `export function useChatLogic`).
+- **Path alias**: Prefer `@/components/ComponentName` and `@/hooks/hookName` in imports so paths stay stable when moving files.
+
+## 5. Adding new screens or flows
+
+When adding a new screen or flow:
+
+1. Create the component in `src/components/` with a kebab-case file name and PascalCase component name.
+2. Add a route in `src/app/` if it is a new page (e.g. `src/app/new-page/page.tsx`).
+3. Import the component from `@/components/...` in the page.
+4. Update the element map and any master prompt or cursor rules that list screens and flows.
+
+Do not introduce new top-level folders (e.g. `features/`, `modules/`) unless the master doc or this rule is updated first.

@@ -1,0 +1,33 @@
+---
+description: How we build modals and variants and how they interact with UI styling
+globs: src/components/**/*.tsx, docs/**/*.md
+alwaysApply: true
+---
+# Modals and Variants
+
+Modals and their variants (e.g. sign-in optional, skip confirmation, paywall signed vs not signed up) must be built in a consistent way and must follow the UI styling rules.
+
+## Existing modals (reference)
+
+- **NavMenuModal**: Dropdown below menu icon; links to create, collection, settings. Glassmorphism container, positioned with ref.
+- **PaywallModal**: Centered overlay, "limit reached", $5 CTA. Used when iteration limit hit or at export. Can have variants (not signed up vs signed up).
+- **ActivateModal**: "Reactivate dream-card", $5 or subscribe. Shown when opening an expired card in library.
+- **LoadingSignup**: Full-screen sign-up (name, email, password) and loading phases; navigates to editor. Can be reused as a pattern for "sign up at export" or similar.
+
+## When to reuse vs create new
+
+- **Reuse**: When the behavior and copy are the same (e.g. same paywall message, same activate message). Use the existing component from `@/components/` (e.g. `PaywallModal`, `ActivateModal`).
+- **Variant**: When only copy or one branch differs (e.g. paywall when already signed up vs not), either pass props (e.g. `variant="signedUp"`) or render the same modal with different heading/body text. Do not duplicate the whole modal component unless the layout or behavior is fundamentally different.
+- **New modal**: When the flow requires a new dialog (e.g. optional "Do you want to sign in?", or "Are you sure? Session may not persist"), create a new component in `src/components/` with a clear name (e.g. `SignInPromptModal`, `SkipConfirmModal`). Follow the same structure: backdrop, centered or positioned container, glassmorphism and button styles from `ui-styling.mdc`.
+
+## Interaction with UI styling
+
+- **Glassmorphism**: All modals use the same formula: `bg-white/10 backdrop-blur-md border border-white/20`, and rounded corners (e.g. `rounded-[20px]` or `rounded-[30px]`).
+- **Buttons**: Use the active/inactive button pattern from `ui-styling.mdc` (e.g. primary CTA with `Comp_Button`-style classes, disabled state when form is invalid).
+- **Typography**: Headings use `font-roundo` (lowercase), body and labels use `font-satoshi`. All as per `ui-styling.mdc`.
+- **Naming**: Prefer `Comp_`-prefixed class names for modal sub-elements (e.g. `Comp_Paywall_Button`, `Comp_Activate_Close`) so they stay consistent and documentable in element maps.
+
+## Documenting variants
+
+- In the master prompt, document each modal variant: when it is shown, exact copy (heading, body, button labels), and which variant shows when (e.g. "Paywall at export: variant A when not signed up, variant B when signed up").
+- When adding a new variant, update the master prompt and the element map so the backend and front-end stay in sync.

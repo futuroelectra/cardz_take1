@@ -1,0 +1,21 @@
+---
+description: Process for creating, updating, and maintaining cursor rules
+globs: .cursor/rules/*.mdc, docs/**/*.md
+alwaysApply: false
+---
+# Cursor Rules Lifecycle
+
+Follow this process so rule changes are consistent and traceable. See create-rule skill and [cursor-rules.mdc](.cursor/rules/cursor-rules.mdc) for format and location.
+
+## Principles
+
+- **Single concern:** Each rule covers one domain (styling, API, flows, etc.); no mega-rules.
+- **Proposal step:** New or materially changed rules are proposed (e.g. in a plan or PR) before editing. State rationale and impact on existing rules and [docs/MASTER_PROMPT_BACKEND.md](docs/MASTER_PROMPT_BACKEND.md).
+- **No duplication:** Rules reference the master prompt; they do not restate it. Avoid inlining full tables from [element-maps.mdc](.cursor/rules/element-maps.mdc), [flows.mdc](.cursor/rules/flows.mdc), [modals-variants.mdc](.cursor/rules/modals-variants.mdc). If a rule affects flows or element map, update the master doc instead.
+- **Location and format:** All rules live in `.cursor/rules/`, `.mdc` with YAML frontmatter; naming is kebab-case.
+- **When to update:** New screen, modal, or flow requires master prompt (and optionally flow diagrams) and element map updates. Rule changes that affect behavior require a note in the plan/PR.
+- **Versioning:** Rules are the live source; changes are tracked via git.
+
+## Coordination
+
+This rule coordinates with: [flows.mdc](.cursor/rules/flows.mdc), [element-maps.mdc](.cursor/rules/element-maps.mdc), [flow-diagrams-deliverables.mdc](.cursor/rules/flow-diagrams-deliverables.mdc), [directory-structure-naming.mdc](.cursor/rules/directory-structure-naming.mdc).

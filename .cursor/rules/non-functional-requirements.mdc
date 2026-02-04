@@ -1,0 +1,31 @@
+---
+description: Security, production-readiness, reuse of components, and NFRs every build must meet
+globs: src/**/*
+alwaysApply: true
+---
+# Non-Functional Requirements
+
+Every build must meet these NFRs. No placeholders or "TODO" in production paths.
+
+## Production-ready
+
+- **No placeholders**: Replace all TODOs and mock logic in user-facing flows with real validation, API calls, and error handling.
+- **Error handling**: Validate input; handle API and network errors; show clear, user-friendly messages.
+- **Validation**: Client- and server-side validation for forms (sign-up, password, payment, etc.) as specified in the master prompt.
+
+## Security
+
+- **Auth**: Strong session handling; optional device fingerprint for "handoff" continuity (e.g. anonymous → signed-in) as defined in the spec.
+- **Data**: Encrypt sensitive data at rest and in transit. No secrets in client code or in logs.
+- **Future-proofing**: Where the spec calls for it (e.g. quantum-safe guidance), follow the documented approach; do not weaken crypto or storage for convenience.
+
+## Reuse
+
+- **Components**: Any new screen or modal must reuse or replicate patterns from existing components in `src/components/` (e.g. `LoadingSignup`, `PaywallModal`, `ActivateModal`) and follow `ui-styling.mdc`.
+- **Extract shared pieces**: Use or create reusable building blocks (e.g. `Comp_Button_Primary`) to avoid duplication and keep styling consistent.
+- **Paths**: Import from `@/components/` and `@/hooks/`; do not reintroduce quarantine or ad-hoc folders for new features.
+
+## Consistency with spec
+
+- **Master prompt**: Implementation must align with `docs/MASTER_PROMPT_BACKEND.md` (flows, element map, modals, notifications, auth spaces).
+- **Cursor rules**: Follow `directory-structure-naming.mdc`, `flows.mdc`, `modals-variants.mdc`, `notifications-backend.mdc`, and `flow-diagrams-deliverables.mdc` so that structure, flows, and deliverables stay standardized.

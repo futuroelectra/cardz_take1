@@ -9,3 +9,6 @@ alwaysApply: true
 2. **Format**: Always use `.mdc` files with YAML frontmatter.
 3. **Naming**: Use kebab-case (e.g., `ui-components.mdc`).
 4. **Focus**: Each rule should handle ONE specific domain (e.g., Styling, API, or Testing).
+5. **Lifecycle**: For creating, updating, and maintaining rules, follow [cursor-rules-lifecycle.mdc](.cursor/rules/cursor-rules-lifecycle.mdc).
+6. **Dependencies**: Never edit `package.json` for dependencies by hand; use the CLI. See [dependencies-install.mdc](.cursor/rules/dependencies-install.mdc).
+7. **Code style**: File size, comments, and layout follow [code-style.mdc](.cursor/rules/code-style.mdc).

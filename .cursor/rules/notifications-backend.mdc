@@ -1,0 +1,36 @@
+---
+description: How notifications work (per-button, WhatsApp/email from user or in-app only) and how async backend jobs tie to the UI
+globs: src/**/*.tsx, docs/**/*.md
+alwaysApply: true
+---
+# Notifications and Backend
+
+Notifications are **per button** on a card. The sender configures each notifying button with one of three options. The backend runs async jobs so the app stays responsive.
+
+## Notification options (exactly three)
+
+For any button that can trigger a notification, the user chooses exactly one of:
+
+1. **Authenticate through your own WhatsApp**: Messages to the receiver are sent from the user’s WhatsApp (user must authenticate).
+2. **Authenticate through your own email**: Messages are sent from the user’s email (user must authenticate).
+3. **In-app only**: The experience (e.g. message, audio) appears only inside the app; no external notification (no WhatsApp, no email from us or from user).
+
+There is no "from us only" option. Backend stores the chosen option and any contact (email or number) per button for when the receiver triggers it.
+
+## Receiver experience
+
+- When the receiver triggers a button that has notification (e.g. submits an input): the backend sends the message via the chosen channel (WhatsApp or email from sender, or in-app only).
+- Show "check your inbox soon" (or similar) when a channel notification is used; optionally mirror or show the same content in-app after a short delay.
+- For in-app only, show the content directly in the app with no external message.
+
+## Async backend behavior
+
+- Sending (email/WhatsApp) must run as **async jobs** so the app stays responsive.
+- The user can keep using the app while a job runs; do not block the UI on a long loader for send.
+- Optionally notify the user when the job is done (in-app or via the same channel), as specified in the master prompt.
+
+## UI implications
+
+- In the builder (sender) flow, when configuring a button that can notify, the UI must offer exactly the three options above (no extra or combined options unless the spec changes).
+- On the receiver side, after submit, show a non-blocking loading state (e.g. "cooking" / Lottie-style) if content is being generated; show "check your inbox soon" when a channel notification is used.
+- Do not implement notification paths that are not in the master prompt (e.g. SMS from us, or "from us" as a fourth option).
