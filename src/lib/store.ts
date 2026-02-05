@@ -42,6 +42,7 @@ function sessionToRow(s: Session): Database["public"]["Tables"]["sessions"]["Ins
     creative_summary: s.creativeSummary as Database["public"]["Tables"]["sessions"]["Row"]["creative_summary"],
     approved_at: s.approvedAt ?? null,
     build_id: s.buildId ?? null,
+    // collector_attached_image_url omitted so DBs without this column still work
   };
 }
 
@@ -57,6 +58,7 @@ function rowToSession(r: Database["public"]["Tables"]["sessions"]["Row"]): Sessi
     creativeSummary: r.creative_summary as Session["creativeSummary"],
     approvedAt: r.approved_at ?? undefined,
     buildId: r.build_id ?? undefined,
+    collectorAttachedImageUrl: r.collector_attached_image_url ?? undefined,
   };
 }
 

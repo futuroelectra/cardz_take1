@@ -88,7 +88,11 @@ export default function PreviewWrapper({ code }: PreviewWrapperProps) {
   const cardCode = processCode(code || "") || FALLBACK_CODE;
   const appCode = WRAPPER_APP;
 
-  const files = { "/App.tsx": appCode, "/Card.tsx": cardCode };
+  /** Use template default index so bundler injects correctly; only override App + Card. */
+  const files = {
+    "/App.tsx": appCode,
+    "/Card.tsx": cardCode,
+  };
 
   if (!apiBaseUrl) {
     return (
@@ -99,8 +103,12 @@ export default function PreviewWrapper({ code }: PreviewWrapperProps) {
   }
 
   return (
-    <div className="h-full w-full min-h-0 flex flex-col overflow-hidden rounded-[20px] bg-black/40">
+    <div
+      className="editor-preview-frame flex flex-col overflow-hidden rounded-[20px] shrink-0"
+      style={{ width: 390, height: 720, minWidth: 390, minHeight: 720, maxWidth: 390, maxHeight: 720 }}
+    >
       <Sandpack
+        key={code.slice(0, 200)}
         template="react-ts"
         theme="dark"
         files={files}
@@ -123,8 +131,9 @@ export default function PreviewWrapper({ code }: PreviewWrapperProps) {
           editorWidthPercentage: 0,
           showConsole: false,
           showConsoleButton: false,
+          layout: "preview",
+          resizablePanels: false,
         }}
-        style={{ height: "100%", minHeight: 0 }}
       />
     </div>
   );

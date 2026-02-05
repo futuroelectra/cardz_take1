@@ -50,6 +50,7 @@ export type Database = {
           creative_summary: Json | null;
           approved_at: number | null;
           build_id: string | null;
+          collector_attached_image_url: string | null;
         };
         Insert: {
           id: string;
@@ -62,6 +63,7 @@ export type Database = {
           creative_summary?: Json | null;
           approved_at?: number | null;
           build_id?: string | null;
+          collector_attached_image_url?: string | null;
         };
         Update: {
           id?: string;
@@ -74,6 +76,7 @@ export type Database = {
           creative_summary?: Json | null;
           approved_at?: number | null;
           build_id?: string | null;
+          collector_attached_image_url?: string | null;
         };
         Relationships: [];
       };

@@ -32,7 +32,10 @@ export async function POST(
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const { sessionId, text } = body;
+
+  const sessionId = body.sessionId;
+  const text = body.text;
+
   if (!sessionId || typeof text !== "string") {
     return NextResponse.json({ error: "sessionId and text required" }, { status: 400 });
   }
@@ -87,8 +90,12 @@ export async function POST(
   if (showConfirmation) {
     try {
       const summary = await extractCreativeSummary(updatedCollectorMessages);
+      const summaryWithProse: typeof summary & { prose: string } = {
+        ...summary,
+        prose: aiMsg.text,
+      };
       await store.updateSession(sessionId, {
-        creativeSummary: summary,
+        creativeSummary: summaryWithProse,
         phase: "collector",
       });
     } catch (err) {
@@ -104,6 +111,7 @@ export async function POST(
           tone: "warm",
           productConfirmed: true,
           notes: userText.slice(0, 300),
+          prose: aiMsg.text,
         },
         phase: "collector",
       });

@@ -1,12 +1,16 @@
 /**
  * Agent 1: Collector. Gathers "just enough" from sender chat; outputs creative summary for Architect.
- * Per docs/MASTER_PROMPT_BACKEND.md §5. Uses LLM for replies and completion check.
+ * Per docs/MASTER_PROMPT_BACKEND.md §5. Uses LLM for replies and completion check. Identity engine for tone.
  */
 
 import { generate, generateJson, type LLMMessage } from "@/lib/llm";
+import { getIdentityEngineSummary } from "@/lib/brand/identity";
+import { getCollectorIntentionSummary, getCollectorKnowledgeSummary } from "@/lib/brand/intentions";
 import type { CreativeSummary, ChatMessage } from "@/lib/types";
 
-const COLLECTOR_SYSTEM = `You are a creative assistant helping someone design a personalized card experience for a recipient. Keep the conversation short and natural: 1–2 substantive exchanges. Ask who the card is for, what vibe or tone they want, and what the center of the experience is (e.g. an avatar, a card, an orb). Confirm briefly that they're creating something the recipient will control. Do not list data points; weave questions into a friendly chat.`;
+const COLLECTOR_SYSTEM = `You are the Digital Confidant. Your goal is to materialize the user's intent into a creative summary. Observe the user's tone and mirror it. No AI apologies; no title case in prose; max one emoji per message from the approved list (e.g. 🔮 ✨ 🪶 🕯️). Use effortless authority: offer a vision, do not ask for permission.
+
+Ask: Who is this for? What's the vibe? What is the center of the world (Avatar vs Object)? Stop once you have enough for a JSON summary. Keep the conversation to 3-4 substantive exchanges. Do not list data points; weave questions into a natural chat.`;
 
 const DATA_POINTS = [
   "recipient name",
@@ -26,7 +30,12 @@ Respond with JSON only:
   "missingPoints": ["list any missing data points"]
 }`;
 
-const TRANSLATE_PROMPT = `You are a data extraction assistant. Turn this chat transcript into a structured creative summary for a card builder.
+const PROSE_SUMMARY_PROMPT = `Based on this conversation between the sender and the assistant, write a short paragraph (2–4 sentences) that describes what the card will be—who it's for, the vibe, and the center of the world. This paragraph will be shown to the sender for approval. Write in plain prose only: no JSON, no bullet points, no technical terms or effect names. Warm and concise.
+
+Conversation:
+`;
+
+const TRANSLATE_PROMPT = `Turn this chat transcript into a structured creative summary for a card builder.
 
 Output ONLY valid JSON with exactly these keys (no extra keys):
 {
@@ -50,6 +59,28 @@ function chatMessagesToLLM(messages: ChatMessage[]): LLMMessage[] {
   }));
 }
 
+const WELCOME_PROMPT =
+  "Generate the first message the sender will see: a welcome to the Cardzzz platform. Start with a brief one-line intro, then the creative, on-brand welcome that is different every time and invites them into the conversation. On-tone (Digital Confidant). One short message only. No preamble or explanation.";
+
+/**
+ * Generate the body of the first welcome message (no prefix). Used by GET /api/chat/welcome; the route prepends the fixed line before returning.
+ */
+const COLLECTOR_KNOWLEDGE_RULE = `The fundamentals knowledge above is for reference only when the sender asks about Cardzzz or seems confused; never list or volunteer it unprompted.`;
+
+export async function getCollectorWelcomeMessage(): Promise<string> {
+  const [identitySummary, collectorIntention, collectorKnowledge] = await Promise.all([
+    getIdentityEngineSummary(),
+    getCollectorIntentionSummary(),
+    getCollectorKnowledgeSummary(),
+  ]);
+  const systemInstruction = `${identitySummary}\n\n${collectorIntention}\n\n${collectorKnowledge}\n\n${COLLECTOR_KNOWLEDGE_RULE}\n\n${COLLECTOR_SYSTEM}`;
+  const text = await generate({
+    prompt: WELCOME_PROMPT,
+    systemInstruction,
+  });
+  return text.trim();
+}
+
 /**
  * Returns true when we have enough exchanges to produce a first draft (e.g. 1–2 substantive).
  */
@@ -70,6 +101,22 @@ type TranslateOutput = {
 };
 
 /**
+ * Generate a short prose summary (2–4 sentences) for the approval bubble. No JSON or effect names.
+ */
+export async function generateProseSummary(messages: ChatMessage[], userText: string, assistantReply: string): Promise<string> {
+  const transcript = [
+    ...messages.map((m) => `${m.sender === "user" ? "User" : "Assistant"}: ${m.text}`),
+    `User: ${userText}`,
+    `Assistant: ${assistantReply}`,
+  ].join("\n\n");
+  const prose = await generate({
+    prompt: PROSE_SUMMARY_PROMPT + transcript + "\n\nWrite only the paragraph, nothing else.",
+    systemInstruction: "You write short, warm approval summaries. Plain prose only. No JSON, no labels.",
+  });
+  return prose.trim();
+}
+
+/**
  * Translate transcript to CreativeSummary via LLM. Used when completion check passes.
  */
 export async function extractCreativeSummary(messages: ChatMessage[]): Promise<CreativeSummary> {
@@ -78,7 +125,7 @@ export async function extractCreativeSummary(messages: ChatMessage[]): Promise<C
     .join("\n\n");
   const out = await generateJson<TranslateOutput>({
     prompt: TRANSLATE_PROMPT + transcript + "\n\nReturn ONLY the JSON object.",
-    systemInstruction: "You are a data extraction expert. Respond with valid JSON only.",
+    systemInstruction: "You are a data extraction expert. Respond with valid JSON only. Sentence case in string values.",
     responseFormat: "json",
   });
   return {
@@ -118,9 +165,16 @@ export async function getCollectorReply(
   const llmMessages = chatMessagesToLLM(messages);
   const nextMessages: LLMMessage[] = [...llmMessages, { role: "user", parts: [{ text: userText }] }];
 
+  const [identitySummary, collectorIntention, collectorKnowledge] = await Promise.all([
+    getIdentityEngineSummary(),
+    getCollectorIntentionSummary(),
+    getCollectorKnowledgeSummary(),
+  ]);
+  const systemInstruction = `${identitySummary}\n\n${collectorIntention}\n\n${collectorKnowledge}\n\n${COLLECTOR_KNOWLEDGE_RULE}\n\n${COLLECTOR_SYSTEM}`;
+
   const responseText = await generate({
     messages: nextMessages,
-    systemInstruction: COLLECTOR_SYSTEM,
+    systemInstruction,
   });
 
   const fullConvoForCheck = [
@@ -134,6 +188,7 @@ export async function getCollectorReply(
   try {
     completionCheck = await generateJson<CompletionCheck>({
       prompt: checkPrompt,
+      systemInstruction: "You are a completion checker. Respond with JSON only.",
       responseFormat: "json",
     });
   } catch {
@@ -142,9 +197,18 @@ export async function getCollectorReply(
 
   const showConfirmation = completionCheck.hasEnoughInfo === true;
 
+  let displayText = responseText;
+  if (showConfirmation) {
+    try {
+      displayText = await generateProseSummary(messages, userText, responseText);
+    } catch {
+      // Fallback to raw reply if prose generation fails
+    }
+  }
+
   const aiMessage: ChatMessage = {
     id: `ai-${Date.now()}`,
-    text: responseText,
+    text: displayText,
     sender: "ai",
     type: showConfirmation ? "confirmation" : undefined,
     timestamp: new Date().toISOString(),

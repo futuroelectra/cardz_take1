@@ -25,6 +25,8 @@ export type Session = {
   approvedAt?: number;
   /** Current build (card) being edited */
   buildId?: BuildId;
+  /** URL or storage key of image attached in Collector (for avatar pipeline at build) */
+  collectorAttachedImageUrl?: string;
 };
 
 export type User = {
@@ -38,6 +40,8 @@ export type User = {
 
 // ----- Collector output (Agent 1 → Architect) -----
 export type CreativeSummary = {
+  /** When present, canonical input for Architect (prose-only); stored with legacy fields for fallback */
+  prose?: string;
   recipientName: string;
   senderName: string;
   senderVibe: string;
@@ -63,6 +67,62 @@ export type ButtonSlot = {
   contact?: string;
 };
 
+// ----- Blueprint effects (Route B); see docs/BLUEPRINT_EFFECTS.md -----
+export type ButtonStyleEffect =
+  | "none"
+  | "solid"
+  | "gradient"
+  | "outline"
+  | "glass"
+  | "softGlow"
+  | "bordered"
+  | "minimal"
+  | "pill"
+  | "neon";
+export type FrameBackdropEffect =
+  | "none"
+  | "glow"
+  | "pulse"
+  | "softGlow"
+  | "particles"
+  | "gradientRing"
+  | "shimmer"
+  | "halo"
+  | "subtleShadow";
+export type EntranceEffect =
+  | "none"
+  | "confetti"
+  | "particles"
+  | "fade"
+  | "scaleIn"
+  | "subtleDrift"
+  | "blurIn"
+  | "stagger"
+  | "floatUp";
+export type CardContainerEffect =
+  | "none"
+  | "glass"
+  | "softBorder"
+  | "elevated"
+  | "minimal"
+  | "gradientBorder";
+export type TypographyTreatmentEffect =
+  | "none"
+  | "subtleShadow"
+  | "gradientText"
+  | "letterSpacing"
+  | "allCaps"
+  | "serif"
+  | "rounded";
+
+export type BlueprintEffects = {
+  buttonStyle?: ButtonStyleEffect;
+  frameBackdrop?: FrameBackdropEffect;
+  entranceEffect?: EntranceEffect;
+  cardContainer?: CardContainerEffect;
+  typographyTreatment?: TypographyTreatmentEffect;
+};
+
 export type Blueprint = {
   heading: string;
   description: string;
@@ -74,6 +134,10 @@ export type Blueprint = {
   secondaryBackground: string;
   textColor: string;
   themeName: string;
+  /** System instructions ("Will") for runtime agents: Voice (text), Alchemist (image), Maestro (music). */
+  runtimeInstructions?: { text?: string; image?: string; music?: string };
+  /** High-end effects; when absent, treat as all "none". */
+  effects?: BlueprintEffects;
 };
 
 // ----- Engineer output (Agent 3) -----
@@ -158,7 +222,13 @@ export type SignUpResponse = { ok: boolean; userId?: UserId; error?: string };
 export type BuildStartBody = { sessionId: SessionId; userId?: UserId };
 export type BuildStartResponse = { buildId: BuildId; status: BuildStatus };
 
-export type EditorSendBody = { buildId: BuildId; sessionId: SessionId; text: string };
+export type EditorSendBody = {
+  buildId: BuildId;
+  sessionId: SessionId;
+  text: string;
+  /** Recent editor messages for Iterator LLM context (e.g. last 5–10). */
+  recentMessages?: ChatMessage[];
+};
 export type EditorSendResponse = {
   messages: ChatMessage[];
   build?: { artifact?: BuildArtifact; status: BuildStatus };

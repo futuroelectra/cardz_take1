@@ -14,7 +14,11 @@ export type UseChatLogicApiOptions = {
   mode: "collector" | "editor";
   sessionId: string;
   buildId?: string;
+  /** When in collector mode, use this as the first AI message (e.g. from GET /api/chat/welcome). */
+  initialWelcome?: string | null;
 };
+
+const COLLECTOR_FALLBACK_MESSAGE = "Welcome to Cardzzz ✦";
 
 function chatMessageToMessage(m: { id: string; text: string; sender: "user" | "ai"; type?: "confirmation" | "export"; timestamp: string }): Message {
   return {
@@ -30,20 +34,41 @@ export function useChatLogic(
   onPopTrigger?: () => void,
   apiOptions?: UseChatLogicApiOptions
 ) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      text: apiOptions?.mode === "editor"
-        ? "You've arrived at your digital experience. The receiver is the ultimate guide—what would you like to tweak?"
-        : "Hey I'm the creative assistant! Who's this card for, and what vibe do you want? One or two sentences is enough.",
-      sender: "ai",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (apiOptions?.mode === "editor") {
+      return [
+        {
+          id: "1",
+          text: "You've arrived at your digital experience. The receiver is the ultimate guide—what would you like to tweak?",
+          sender: "ai" as const,
+          timestamp: new Date(),
+        },
+      ];
+    }
+    if (apiOptions?.mode === "collector" && apiOptions?.initialWelcome) {
+      return [
+        {
+          id: "1",
+          text: apiOptions.initialWelcome,
+          sender: "ai" as const,
+          timestamp: new Date(),
+        },
+      ];
+    }
+    return [
+      {
+        id: "1",
+        text: COLLECTOR_FALLBACK_MESSAGE,
+        sender: "ai" as const,
+        timestamp: new Date(),
+      },
+    ];
+  });
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const welcomeAppliedRef = useRef(false);
 
   useEffect(() => {
     if (scrollContainerRef.current) {
@@ -51,6 +76,24 @@ export function useChatLogic(
         scrollContainerRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (
+      apiOptions?.mode === "collector" &&
+      apiOptions?.initialWelcome &&
+      !welcomeAppliedRef.current
+    ) {
+      welcomeAppliedRef.current = true;
+      setMessages([
+        {
+          id: "1",
+          text: apiOptions.initialWelcome,
+          sender: "ai",
+          timestamp: new Date(),
+        },
+      ]);
+    }
+  }, [apiOptions?.mode, apiOptions?.initialWelcome]);
 
   const sendMockResponse = useCallback((userMessageText: string) => {
     const trimmedText = userMessageText.toLowerCase().trim();
@@ -106,6 +149,13 @@ export function useChatLogic(
     }
 
     if (apiOptions?.sessionId) {
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        text: trimmedValue,
+        sender: "user",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
       setSending(true);
       try {
         if (apiOptions.mode === "collector") {
@@ -118,13 +168,35 @@ export function useChatLogic(
             }),
           });
           const data = await res.json();
-          if (data.popTrigger) {
+          if (!res.ok) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `ai-${Date.now()}`,
+                text: typeof data?.error === "string" ? data.error : "Something went wrong. Please try again.",
+                sender: "ai",
+                timestamp: new Date(),
+              },
+            ]);
+          } else if (data.popTrigger) {
             onPopTrigger?.();
           } else if (data.messages?.length) {
-            const newMsgs = data.messages.map(chatMessageToMessage);
-            setMessages((prev) => [...prev, ...newMsgs]);
+            const aiOnly = data.messages
+              .map(chatMessageToMessage)
+              .filter((m: Message) => m.sender === "ai");
+            if (aiOnly.length) setMessages((prev) => [...prev, ...aiOnly]);
           }
         } else if (apiOptions.mode === "editor" && apiOptions.buildId) {
+          const recentMessages = messages.slice(-10).map((m) => ({
+            id: m.id,
+            text: m.text,
+            sender: m.sender,
+            type: m.type,
+            timestamp:
+              m.timestamp instanceof Date
+                ? m.timestamp.toISOString()
+                : new Date().toISOString(),
+          }));
           const res = await fetch("/api/editor/send", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -132,14 +204,17 @@ export function useChatLogic(
               buildId: apiOptions.buildId,
               sessionId: apiOptions.sessionId,
               text: trimmedValue,
+              recentMessages,
             }),
           });
           const data = await res.json();
           if (data.limitReached) setLimitReached(true);
           if (data.popTrigger) onPopTrigger?.();
           if (data.messages?.length) {
-            const newMsgs = data.messages.map(chatMessageToMessage);
-            setMessages((prev) => [...prev, ...newMsgs]);
+            const aiOnly = data.messages
+              .map(chatMessageToMessage)
+              .filter((m: Message) => m.sender === "ai");
+            if (aiOnly.length) setMessages((prev) => [...prev, ...aiOnly]);
           }
         }
       } catch {

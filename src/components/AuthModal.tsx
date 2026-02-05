@@ -7,7 +7,7 @@ type AuthMode = "signup" | "signin";
 type AuthModalProps = {
   isOpen: boolean;
   onClose?: () => void;
-  onSignUp?: (email: string, password: string) => void;
+  onSignUp?: (name: string, email: string, password: string) => void;
   onSignIn?: (email: string, password: string) => void;
   error?: string | null;
 };
@@ -20,6 +20,7 @@ export default function AuthModal({
   error,
 }: AuthModalProps) {
   const [mode, setMode] = useState<AuthMode>("signup");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -51,6 +52,7 @@ export default function AuthModal({
   };
 
   const isSignUpValid =
+    name.trim() !== "" &&
     email.trim() !== "" &&
     password.trim() !== "" &&
     confirmPassword.trim() !== "" &&
@@ -62,7 +64,8 @@ export default function AuthModal({
   const handleSignUpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isSignUpValid && onSignUp) {
-      onSignUp(email.trim(), password);
+      onSignUp(name.trim(), email.trim(), password);
+      setName("");
       setEmail("");
       setPassword("");
       setConfirmPassword("");
@@ -202,6 +205,15 @@ export default function AuthModal({
               onSubmit={handleSignUpSubmit}
               className="Comp_Auth_Form flex flex-col items-center gap-[15px] w-full"
             >
+              <div className="Comp_Input_Field w-full relative">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Name"
+                  className={inputBase}
+                />
+              </div>
               <div className="Comp_Input_Field w-full relative">
                 <input
                   type="email"

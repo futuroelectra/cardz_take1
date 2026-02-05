@@ -92,3 +92,41 @@ input[type="password"]:-webkit-autofill:active {
     transform: scale(1) translateY(0);
   }
 }
+
+/* Editor preview: fixed 390×720, clipped with 20px radius inside glass */
+.editor-preview-frame {
+  position: relative;
+  border-radius: 20px;
+  isolation: isolate;
+}
+
+/* Sandpack layout root: fill wrapper, no overflow */
+.editor-preview-frame [class*="sp-layout"] {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 720px !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 20px !important;
+}
+
+.editor-preview-frame [class*="sp-layout"] > * {
+  min-height: 0 !important;
+  overflow: hidden !important;
+  border-radius: 20px !important;
+}
+
+/* Sandpack preview iframe: exactly 390×720, rounded corners */
+.editor-preview-frame iframe,
+.editor-preview-frame [class*="sp-preview"] iframe {
+  width: 390px !important;
+  height: 720px !important;
+  max-width: 390px !important;
+  max-height: 720px !important;
+  min-height: 0 !important;
+  border-radius: 20px !important;
+  border: none !important;
+  display: block !important;
+}

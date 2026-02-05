@@ -54,7 +54,7 @@ export default function EditorChat({ sessionId, buildId }: EditorChatProps) {
   const handlePay = useCallback(() => setIsPaywallOpen(false), []);
 
   const apiOptions = { mode: "editor" as const, sessionId, buildId };
-  const { messages, inputValue, sendMessage, handleKeyDown, handleInputChange, scrollContainerRef, textareaRef, limitReached } = useChatLogic(handlePopTrigger, apiOptions);
+  const { messages, inputValue, sendMessage, handleKeyDown, handleInputChange, scrollContainerRef, textareaRef, sending, limitReached } = useChatLogic(handlePopTrigger, apiOptions);
   const isButtonActive = inputValue.trim().length > 0 || hasAttachedFile || isRecording;
 
   const handleFileAttach = () => setHasAttachedFile((p) => !p);
@@ -101,8 +101,17 @@ export default function EditorChat({ sessionId, buildId }: EditorChatProps) {
   const isLoading = build === null;
   const isBuilding = build?.status === "pending";
 
+  /** Artifact may come from API as plain object; ensure we read .code reliably. */
+  const previewCode =
+    build?.artifact &&
+    typeof build.artifact === "object" &&
+    "code" in build.artifact &&
+    typeof (build.artifact as { code?: string }).code === "string"
+      ? (build.artifact as { code: string }).code
+      : undefined;
+
   return (
-    <div className="Layout_chat flex flex-col w-full h-screen bg-gradient-to-b from-cardzzz-wine to-cardzzz-blood overflow-hidden">
+    <div className="Layout_chat flex flex-col w-full min-h-screen bg-gradient-to-b from-cardzzz-wine to-cardzzz-blood overflow-y-auto">
       <div className="Section_navbar flex flex-col items-center gap-[10px] w-full h-[120px] p-[10px] shrink-0">
         <div className="Navbar flex justify-between items-center h-[100px] w-full max-w-[1400px] px-[15px] py-[30px] shrink-0 relative mx-auto">
           <svg className="Comp_logo relative" width="86" height="27" viewBox="0 0 86 27" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -126,14 +135,19 @@ export default function EditorChat({ sessionId, buildId }: EditorChatProps) {
           </button>
         </div>
       </div>
-      <div className="Section_main_content flex flex-col md:flex-row flex-1 w-full min-h-0 gap-[20px] pb-[15px] px-[15px]">
+      <div className="Section_main_content flex flex-col md:flex-row w-full gap-[20px] pb-[15px] px-[15px]">
         <div className="Section_editor_canvas flex flex-col items-center justify-center w-full md:w-[45%] lg:w-[40%] shrink-0">
-          <div className="Comp_editor_container flex flex-col items-center justify-center w-full max-w-[390px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative p-[10px] overflow-hidden">
-            {/* iPhone-sized preview: fixed 390×720 (iPhone proportion, fits viewport) */}
-            <div className="w-[390px] max-w-full h-[720px] rounded-[20px] overflow-hidden bg-black/40 flex flex-col shrink-0">
-              {build?.artifact?.code ? (
-                <div className="w-full h-full min-h-0 rounded-[20px] overflow-hidden">
-                  <PreviewWrapper code={build.artifact.code} />
+          {/* Glass: fixed 390×720 preview; whole page scrolls to see bottom of preview and chat */}
+          <div className="Comp_editor_container flex flex-col items-center justify-center w-full max-w-[410px] h-[740px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative p-[10px] overflow-hidden shrink-0">
+            <div className="w-[390px] h-[720px] max-w-full flex flex-col shrink-0 rounded-[20px] overflow-hidden bg-black/40" style={{ minWidth: 0, minHeight: 0 }}>
+              {previewCode ? (
+                <div className="w-full h-full min-h-0 min-w-0 rounded-[20px] overflow-hidden flex flex-col">
+                  <PreviewWrapper code={previewCode} />
+                </div>
+              ) : build?.artifact && !previewCode ? (
+                <div className="w-full h-full rounded-[20px] bg-black/40 flex flex-col items-center justify-center gap-2 p-4">
+                  <p className="text-cardzzz-cream/80 font-satoshi text-sm text-center">Preview code missing</p>
+                  <p className="text-cardzzz-cream/60 font-satoshi text-xs text-center">Build may have saved without code. Try re-building.</p>
                 </div>
               ) : isLoading || isBuilding ? (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-3 rounded-[20px] bg-black/40 p-6">
@@ -154,8 +168,8 @@ export default function EditorChat({ sessionId, buildId }: EditorChatProps) {
             </div>
           </div>
         </div>
-        <div className="Section_chat_interface flex flex-col w-full md:w-[55%] lg:w-[60%] min-h-0">
-          <div className="Container_alignment flex flex-col w-full h-[calc(100vh-140px)] md:h-[605px] shrink-0 overflow-hidden">
+        <div className="Section_chat_interface flex flex-col w-full md:w-[55%] lg:w-[60%] min-h-0 md:min-h-[605px]">
+          <div className="Container_alignment flex flex-col w-full min-h-[400px] md:h-[calc(100vh-140px)] md:max-h-[605px] shrink-0 overflow-hidden">
             <div className="Section_chat_heading flex justify-center items-center w-full shrink-0">
               <div className="w-full max-w-[650px] min-w-[390px] mx-auto">
                 <h1 className="Heading text-cardzzz-cream text-center font-roundo font-bold text-[24px] leading-normal">final touches?</h1>
@@ -164,14 +178,25 @@ export default function EditorChat({ sessionId, buildId }: EditorChatProps) {
             <div ref={scrollContainerRef} className="Section_chat flex flex-col items-center flex-1 w-full overflow-y-auto overflow-x-hidden min-h-0 max-h-full" style={{ WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)", maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)" }}>
               <div className="Section_Chat_Scroll_Area flex flex-col items-start gap-[5px] w-full max-w-[650px] min-w-[390px] mx-auto px-[15px] pt-[1rem] pb-[30px]">
                 {messages.map((message) => (
-                  <div key={message.id} className={`Chat_Bubble_Container flex flex-col justify-center gap-[10px] w-full relative ${message.sender === "user" ? "items-end p-[5px_30px] self-end" : "items-start p-[5px_30px] self-start"}`}>
+                  <div key={message.id} className={`Chat_Bubble_Container w-full flex py-[5px] ${message.sender === "user" ? "justify-end pl-[30px] pr-0" : "justify-start pl-0 pr-[30px]"}`}>
                     {message.type === "confirmation" && message.sender === "ai" ? <Comp_Confirmation_Request message={message} onApprove={handleApprove} /> : message.type === "export" && message.sender === "ai" ? <Comp_Export_Request message={message} onExport={handleExport} /> : (
-                      <div className={`${message.sender === "user" ? "Chat_bubble_user" : "Chat_bubble_ai"} flex items-start content-start gap-[10px] flex-wrap max-w-[560px] p-[10px_15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative ${message.sender === "user" ? "ml-auto" : ""}`}>
+                      <div className={`${message.sender === "user" ? "Chat_bubble_user" : "Chat_bubble_ai"} flex items-start content-start gap-[10px] flex-wrap max-w-[560px] p-[10px_15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative`}>
                         <div className="BodyText max-w-[530px] text-cardzzz-cream text-[14px] font-medium leading-normal relative font-satoshi break-words" style={{ wordWrap: "break-word", overflowWrap: "break-word" }}>{message.text}</div>
                       </div>
                     )}
                   </div>
                 ))}
+                {sending && (
+                  <div className="Chat_Bubble_Container w-full flex justify-start py-[5px] pl-0 pr-[30px]">
+                    <div className="Chat_bubble_ai flex items-center gap-[10px] max-w-[560px] p-[10px_15px] pb-[15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative">
+                      <span className="flex gap-1">
+                        <span className="w-2 h-2 rounded-full bg-cardzzz-cream/80 animate-bounce [animation-delay:0ms]" />
+                        <span className="w-2 h-2 rounded-full bg-cardzzz-cream/80 animate-bounce [animation-delay:150ms]" />
+                        <span className="w-2 h-2 rounded-full bg-cardzzz-cream/80 animate-bounce [animation-delay:300ms]" />
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="Section_Input_Container flex flex-col items-center w-full shrink-0 px-[10px]">

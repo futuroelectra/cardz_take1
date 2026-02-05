@@ -41,7 +41,7 @@ export async function POST(
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const { buildId, sessionId, text } = body;
+  const { buildId, sessionId, text, recentMessages } = body;
   if (!buildId || !sessionId || typeof text !== "string") {
     return NextResponse.json({ error: "buildId, sessionId, text required" }, { status: 400 });
   }
@@ -91,7 +91,15 @@ export async function POST(
     tokenCostCents: build.tokenCostCents + addedCost,
   });
 
-  const aiMessage = getIteratorReply(text.trim());
+  const cardContext = build.artifact?.blueprint
+    ? { heading: build.artifact.blueprint.heading, themeName: build.artifact.blueprint.themeName }
+    : undefined;
+  const aiMessage = await getIteratorReply(
+    text.trim(),
+    recentMessages ?? [],
+    undefined,
+    cardContext
+  );
   const aiMsg: ChatMessage = {
     ...aiMessage,
     id: aiMessage.id || `ai-${Date.now()}`,

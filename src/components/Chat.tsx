@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useChatLogic, Message } from "@/hooks/useChatLogic";
 import LoadingSignup from "@/components/LoadingSignup";
+import AuthModal from "@/components/AuthModal";
 import EditorChat from "@/components/EditorChat";
 import PaywallModal from "@/components/PaywallModal";
 import NavMenuModal from "@/components/NavMenuModal";
@@ -73,24 +74,49 @@ function getStoredBuildId(): string | null {
   return sessionStorage.getItem(STORAGE_KEY_BUILD_ID);
 }
 
-function getStoredScreen(): "chat" | "signin_choice" | "signup" | "editor" | null {
+function getStoredScreen(): "chat" | "signin_choice" | "loading" | "editor" | null {
   if (typeof sessionStorage === "undefined") return null;
   const s = sessionStorage.getItem(STORAGE_KEY_SCREEN);
-  if (s === "chat" || s === "signin_choice" || s === "signup" || s === "editor") return s;
+  if (s === "chat" || s === "signin_choice" || s === "loading" || s === "editor") return s;
   return null;
 }
 
 export default function Chat() {
-  const [sessionId, setSessionId] = useState<string | null>(() => getStoredSessionId());
-  const [buildId, setBuildId] = useState<string | null>(() => getStoredBuildId());
-  const [currentScreen, setCurrentScreen] = useState<"chat" | "signin_choice" | "signup" | "editor">(
-    () => getStoredScreen() ?? "chat"
-  );
-  const [hasAttachedFile, setHasAttachedFile] = useState(false);
+  // Initialize without sessionStorage so SSR and first client render match (avoids hydration error).
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [buildId, setBuildId] = useState<string | null>(null);
+  const [currentScreen, setCurrentScreen] = useState<"chat" | "signin_choice" | "loading" | "editor">("chat");
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // Restore session/build/screen from storage after mount so client-only state doesn't affect SSR.
+  useEffect(() => {
+    const stored = getStoredSessionId();
+    const build = getStoredBuildId();
+    const screen = getStoredScreen();
+    if (stored) setSessionId(stored);
+    if (build) setBuildId(build);
+    if (screen) setCurrentScreen(screen);
+  }, []);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [loadingVariant, setLoadingVariant] = useState<"signedUp" | "skip">("skip");
   const [isRecording, setIsRecording] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [welcomeMessage, setWelcomeMessage] = useState<string | null>(null);
   const menuIconRef = useRef<HTMLButtonElement>(null);
+
+  const WELCOME_FALLBACK = "Welcome to Cardzzz ✦";
+
+  useEffect(() => {
+    if (!sessionId || currentScreen !== "chat") return;
+    fetch("/api/chat/welcome")
+      .then((res) => res.json())
+      .then((data: { welcome?: string; error?: string }) => {
+        if (data.welcome) setWelcomeMessage(data.welcome);
+        else setWelcomeMessage(WELCOME_FALLBACK);
+      })
+      .catch(() => setWelcomeMessage(WELCOME_FALLBACK));
+  }, [sessionId, currentScreen]);
 
   useEffect(() => {
     if (sessionId) return;
@@ -120,7 +146,11 @@ export default function Chat() {
 
   const apiOptions =
     sessionId && currentScreen === "chat"
-      ? { mode: "collector" as const, sessionId }
+      ? {
+          mode: "collector" as const,
+          sessionId,
+          initialWelcome: welcomeMessage,
+        }
       : undefined;
 
   const {
@@ -134,15 +164,36 @@ export default function Chat() {
     sending,
   } = useChatLogic(handlePopTrigger, apiOptions);
 
-  const isButtonActive = inputValue.trim().length > 0 || hasAttachedFile || isRecording;
-
-  const handleFileAttach = () => setHasAttachedFile((p) => !p);
+  const isButtonActive = inputValue.trim().length > 0 || isRecording;
   const handleVoiceRecord = () => setIsRecording((p) => !p);
 
-  const setScreen = useCallback((screen: "chat" | "signin_choice" | "signup" | "editor") => {
+  const setScreen = useCallback((screen: "chat" | "signin_choice" | "loading" | "editor") => {
     setCurrentScreen(screen);
     if (typeof sessionStorage !== "undefined") sessionStorage.setItem(STORAGE_KEY_SCREEN, screen);
   }, []);
+
+  useEffect(() => {
+    if (currentScreen === "loading" && !buildId) {
+      setScreen("chat");
+    }
+  }, [currentScreen, buildId, setScreen]);
+
+  const startBuildThenLoading = useCallback(
+    async (id: string, userId?: string) => {
+      if (!sessionId) return;
+      await fetch("/api/build/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, userId }),
+      });
+      setBuildId(id);
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(STORAGE_KEY_BUILD_ID, id);
+      }
+      setScreen("loading");
+    },
+    [sessionId, setScreen]
+  );
 
   const handleApprove = useCallback(
     async (messageId: string) => {
@@ -159,39 +210,56 @@ export default function Chat() {
       if (typeof sessionStorage !== "undefined" && newBuildId) {
         sessionStorage.setItem(STORAGE_KEY_BUILD_ID, newBuildId);
       }
-      setScreen(data.signInSuggested ? "signin_choice" : "editor");
-      if (data.signInSuggested === false && data.buildId) {
-        startBuildAndGoToEditor(data.buildId);
+      if (data.signInSuggested) {
+        setScreen("signin_choice");
+      } else if (data.buildId) {
+        setLoadingVariant("skip");
+        startBuildThenLoading(data.buildId);
+      } else {
+        setScreen("editor");
       }
     },
-    [sessionId, setScreen]
+    [sessionId, setScreen, startBuildThenLoading]
   );
 
-  const startBuildAndGoToEditor = useCallback(
-    async (id: string) => {
-      if (!sessionId) return;
-      await fetch("/api/build/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      });
-      setBuildId(id);
-      if (typeof sessionStorage !== "undefined") {
-        sessionStorage.setItem(STORAGE_KEY_BUILD_ID, id);
+  const handleAuthSignUp = useCallback(
+    async (name: string, email: string, password: string) => {
+      if (!sessionId || !buildId) return;
+      setAuthError(null);
+      try {
+        const signRes = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, name, email, password }),
+        });
+        const signData = await signRes.json();
+        if (!signRes.ok) {
+          setAuthError(signData?.error ?? "Sign up failed");
+          return;
+        }
+        setIsAuthModalOpen(false);
+        setLoadingVariant("signedUp");
+        await startBuildThenLoading(buildId, signData.userId);
+      } catch {
+        setAuthError("Something went wrong. Please try again.");
       }
-      setScreen("editor");
     },
-    [sessionId, setScreen]
+    [sessionId, buildId, startBuildThenLoading]
   );
 
-  const handleSignInChoice = (choice: "signup" | "skip") => {
-    if (choice === "signup") {
-      setScreen("signup");
-    } else {
-      if (buildId) startBuildAndGoToEditor(buildId);
-      else setScreen("editor");
-    }
-  };
+  const handleSignInChoice = useCallback(
+    (choice: "signup" | "skip") => {
+      if (choice === "signup") {
+        setIsAuthModalOpen(true);
+        setAuthError(null);
+      } else {
+        setLoadingVariant("skip");
+        if (buildId) startBuildThenLoading(buildId);
+        else setScreen("editor");
+      }
+    },
+    [buildId, startBuildThenLoading, setScreen]
+  );
 
   const handleNavigateToEditor = useCallback(() => {
     if (buildId) setScreen("editor");
@@ -202,38 +270,47 @@ export default function Chat() {
 
   if (currentScreen === "signin_choice") {
     return (
-      <div className="Layout_chat flex flex-col items-center justify-center w-full min-h-screen bg-gradient-to-b from-cardzzz-wine to-cardzzz-blood p-6">
-        <div className="flex flex-col gap-4 max-w-[400px] w-full rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 p-6">
-          <p className="text-cardzzz-cream font-satoshi text-[14px] text-center">
-            Do you want to sign in? All changes will be saved and you can come back.
-          </p>
-          <div className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => handleSignInChoice("signup")}
-              className="Comp_Button-Primary w-full h-[54px] rounded-[16.168px] bg-cardzzz-cream text-cardzzz-accent font-roundo font-bold text-[19px] cursor-pointer hover:opacity-90"
-            >
-              sign in
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSignInChoice("skip")}
-              className="w-full h-[54px] rounded-[16.168px] border border-cardzzz-cream bg-transparent text-cardzzz-cream font-roundo font-bold text-[19px] cursor-pointer hover:opacity-90"
-            >
-              skip for now
-            </button>
+      <>
+        <div className="Layout_chat flex flex-col items-center justify-center w-full min-h-screen bg-gradient-to-b from-cardzzz-wine to-cardzzz-blood p-6">
+          <div className="flex flex-col gap-4 max-w-[400px] w-full rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 p-6">
+            <p className="text-cardzzz-cream font-satoshi text-[14px] text-center">
+              Do you want to sign in? All changes will be saved and you can come back.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => handleSignInChoice("signup")}
+                className="Comp_Button-Primary w-full h-[54px] rounded-[16.168px] bg-cardzzz-cream text-cardzzz-accent font-roundo font-bold text-[19px] cursor-pointer hover:opacity-90"
+              >
+                create an account
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSignInChoice("skip")}
+                className="w-full h-[54px] rounded-[16.168px] border border-cardzzz-cream bg-transparent text-cardzzz-cream font-roundo font-bold text-[19px] cursor-pointer hover:opacity-90"
+              >
+                skip for now
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => { setIsAuthModalOpen(false); setAuthError(null); }}
+          onSignUp={handleAuthSignUp}
+          error={authError}
+        />
+      </>
     );
   }
 
-  if (currentScreen === "signup") {
+  if (currentScreen === "loading" && buildId) {
     return (
       <LoadingSignup
-        sessionId={sessionId ?? undefined}
-        buildId={buildId ?? undefined}
+        buildId={buildId}
         onNavigateToEditor={handleNavigateToEditor}
+        onBackToChat={() => setScreen("chat")}
+        variant={loadingVariant}
       />
     );
   }
@@ -269,21 +346,33 @@ export default function Chat() {
       </div>
       <div ref={scrollContainerRef} className="Section_chat flex flex-col items-center flex-1 w-full overflow-y-auto overflow-x-hidden min-h-0" style={{ WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)", maskImage: "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)" }}>
         <div className="Section_Chat_Scroll_Area flex flex-col items-start gap-[5px] w-full max-w-[650px] min-w-[390px] mx-auto px-[15px] pt-[2rem] pb-[30px]">
+          {sessionId && currentScreen === "chat" && welcomeMessage === null ? (
+            <div className="Chat_Bubble_Container w-full flex justify-start py-[5px] pl-0 pr-[30px]">
+              <div className="Chat_bubble_ai flex items-center gap-[10px] max-w-[560px] p-[10px_15px] pb-[15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative">
+                <span className="flex gap-1">
+                  <span className="w-2 h-2 rounded-full bg-cardzzz-cream/80 animate-bounce [animation-delay:0ms]" />
+                  <span className="w-2 h-2 rounded-full bg-cardzzz-cream/80 animate-bounce [animation-delay:150ms]" />
+                  <span className="w-2 h-2 rounded-full bg-cardzzz-cream/80 animate-bounce [animation-delay:300ms]" />
+                </span>
+              </div>
+            </div>
+          ) : (
+          <>
           {messages.map((message) => (
-            <div key={message.id} className={`Chat_Bubble_Container flex flex-col justify-center gap-[10px] w-full relative ${message.sender === "user" ? "items-end p-[5px_30px] self-end" : "items-start p-[5px_30px] self-start"}`}>
+            <div key={message.id} className={`Chat_Bubble_Container w-full flex py-[5px] ${message.sender === "user" ? "justify-end pl-[30px] pr-0" : "justify-start pl-0 pr-[30px]"}`}>
               {message.type === "confirmation" && message.sender === "ai" ? (
                 <Comp_Confirmation_Request message={message} onApprove={(id) => handleApprove(id)} />
               ) : message.type === "export" && message.sender === "ai" ? (
                 <Comp_Export_Request message={message} onExport={(id) => handleExport(id)} />
               ) : (
-                <div className={`${message.sender === "user" ? "Chat_bubble_user" : "Chat_bubble_ai"} flex items-start content-start gap-[10px] flex-wrap max-w-[560px] p-[10px_15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative ${message.sender === "user" ? "ml-auto" : ""}`}>
+                <div className={`${message.sender === "user" ? "Chat_bubble_user" : "Chat_bubble_ai"} flex items-start content-start gap-[10px] flex-wrap max-w-[560px] p-[10px_15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative`}>
                   <div className="BodyText max-w-[530px] text-cardzzz-cream text-[14px] font-medium leading-normal relative font-satoshi break-words" style={{ wordWrap: "break-word", overflowWrap: "break-word" }}>{message.text}</div>
                 </div>
               )}
             </div>
           ))}
           {sending && (
-            <div className="Chat_Bubble_Container flex flex-col justify-center gap-[10px] w-full relative items-start p-[5px_30px] self-start">
+            <div className="Chat_Bubble_Container w-full flex justify-start py-[5px] pl-0 pr-[30px]">
               <div className="Chat_bubble_ai flex items-center gap-[10px] max-w-[560px] p-[10px_15px] pb-[15px] rounded-[30px] bg-white/10 backdrop-blur-md border border-white/20 relative">
                 <span className="flex gap-1">
                   <span className="w-2 h-2 rounded-full bg-cardzzz-cream/80 animate-bounce [animation-delay:0ms]" />
@@ -293,6 +382,8 @@ export default function Chat() {
               </div>
             </div>
           )}
+          </>
+          )}
         </div>
       </div>
       <div className="Section_Input_Container flex flex-col items-center w-full p-[15px] shrink-0">
@@ -300,7 +391,6 @@ export default function Chat() {
           <div className="Comp_Text_Input flex justify-between items-start w-full relative">
             <textarea ref={textareaRef} value={inputValue} onChange={handleInputChange} onKeyDown={handleKeyDown} placeholder="Type your reply..." rows={1} className="PlaceholderText flex flex-col justify-start w-full min-h-[49px] max-h-[200px] text-cardzzz-cream text-[14.551px] font-medium leading-normal relative font-satoshi bg-transparent border-none outline-none placeholder:text-cardzzz-muted resize-none overflow-y-auto pt-[12px] pb-[12px]" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255, 250, 220, 0.3) transparent" }} />
             <div className="flex items-start gap-[10px] relative pt-[12px]">
-              <button type="button" onClick={handleFileAttach} className={`Comp_Attach flex justify-center items-center w-[28px] h-[28px] relative shrink-0 cursor-pointer transition-opacity hover:opacity-80 ${hasAttachedFile ? "opacity-100" : "opacity-60"}`}><img src="/attach-icon.svg" alt="Attach" width={24} height={24} className="relative" /></button>
               <button type="button" onClick={handleVoiceRecord} className={`Comp_Voice flex justify-center items-center w-[28px] h-[28px] relative shrink-0 cursor-pointer transition-opacity hover:opacity-80 ${isRecording ? "opacity-100" : "opacity-60"}`}><img src="/mic-icon.svg" alt="Mic" width={24} height={24} className="relative" /></button>
             </div>
           </div>
