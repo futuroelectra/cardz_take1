@@ -15,7 +15,7 @@ The product has **exactly three user flows**. Do not add, assume, or implement a
 
 ## Four agents (backend)
 
-Backend MUST implement exactly four agents in order: **Collector** (chat, creative summary) → **Architect** (blueprint JSON) → **Engineer** (code) → **Iterator** (editor chat; minor iterations; rebuild when threshold exceeded). See `docs/MASTER_PROMPT_BACKEND.md` §5 for full definitions and MUSTs.
+Backend MUST implement exactly four agents in order: **Collector** (chat, creative summary) → **Architect** (blueprint JSON) → **Engineer** (code) → **Iterator** (editor chat; minor iterations; rebuild when threshold exceeded). See `docs/MASTER_PROMPT_BACKEND.md` §9 for full definitions and MUSTs.
 
 ## Rules
 

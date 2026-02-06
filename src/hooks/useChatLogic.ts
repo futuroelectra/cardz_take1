@@ -161,14 +161,14 @@ export function useChatLogic(
         if (apiOptions.mode === "collector") {
           const res = await fetch("/api/chat/send", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "X-Stream": "true" },
             body: JSON.stringify({
               sessionId: apiOptions.sessionId,
               text: trimmedValue,
             }),
           });
-          const data = await res.json();
           if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
             setMessages((prev) => [
               ...prev,
               {
@@ -178,13 +178,77 @@ export function useChatLogic(
                 timestamp: new Date(),
               },
             ]);
-          } else if (data.popTrigger) {
-            onPopTrigger?.();
-          } else if (data.messages?.length) {
-            const aiOnly = data.messages
-              .map(chatMessageToMessage)
-              .filter((m: Message) => m.sender === "ai");
-            if (aiOnly.length) setMessages((prev) => [...prev, ...aiOnly]);
+          } else if (res.headers.get("content-type")?.includes("ndjson")) {
+            const reader = res.body?.getReader();
+            if (!reader) {
+              setMessages((prev) => [
+                ...prev,
+                { id: `ai-${Date.now()}`, text: "Something went wrong.", sender: "ai", timestamp: new Date() },
+              ]);
+              return;
+            }
+            const decoder = new TextDecoder();
+            let buffer = "";
+            const aiId = `ai-${Date.now()}`;
+            setMessages((prev) => [
+              ...prev,
+              { id: aiId, text: "", sender: "ai" as const, timestamp: new Date() },
+            ]);
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() ?? "";
+                for (const line of lines) {
+                  if (!line.trim()) continue;
+                  try {
+                    const obj = JSON.parse(line) as { t: string; v?: string; messageId?: string; showConfirmation?: boolean; finalText?: string | null; message?: string };
+                    if (obj.t === "chunk" && typeof obj.v === "string") {
+                      setMessages((prev) => {
+                        const last = prev[prev.length - 1];
+                        if (last?.sender !== "ai") return prev;
+                        return [...prev.slice(0, -1), { ...last, text: last.text + obj.v }];
+                      });
+                    } else if (obj.t === "done") {
+                      setMessages((prev) => {
+                        const last = prev[prev.length - 1];
+                        if (last?.sender !== "ai") return prev;
+                        return [
+                          ...prev.slice(0, -1),
+                          {
+                            ...last,
+                            id: obj.messageId ?? last.id,
+                            text: obj.finalText ?? last.text,
+                            type: obj.showConfirmation ? "confirmation" : undefined,
+                          },
+                        ];
+                      });
+                    } else if (obj.t === "error") {
+                      setMessages((prev) => {
+                        const last = prev[prev.length - 1];
+                        if (last?.sender !== "ai") return prev;
+                        return [...prev.slice(0, -1), { ...last, text: obj.message ?? "Something went wrong." }];
+                      });
+                    }
+                  } catch {
+                    // skip malformed line
+                  }
+                }
+              }
+            } finally {
+              reader.releaseLock();
+            }
+          } else {
+            const data = await res.json();
+            if (data.popTrigger) onPopTrigger?.();
+            else if (data.messages?.length) {
+              const aiOnly = data.messages
+                .map(chatMessageToMessage)
+                .filter((m: Message) => m.sender === "ai");
+              if (aiOnly.length) setMessages((prev) => [...prev, ...aiOnly]);
+            }
           }
         } else if (apiOptions.mode === "editor" && apiOptions.buildId) {
           const recentMessages = messages.slice(-10).map((m) => ({

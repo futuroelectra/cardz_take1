@@ -1,221 +1,36 @@
 # Cardzzz
 
-A creative assistant chat application built with Next.js, featuring a glassmorphism design system and a systematic approach to importing and sanitizing code from Builder.io and Figma.
+A creative assistant chat application built with Next.js. Users have a short conversation (Collector), approve a creative summary, then receive a built interactive card; they iterate in the editor, export, and share. Receivers claim and activate cards; returning users access library and settings.
 
-## Project Overview
+**Tech stack:** Next.js (App Router), React 19, TypeScript, Tailwind CSS.
 
-Cardzzz is a modern chat interface application that provides a creative assistant experience. The project emphasizes clean code architecture, design system consistency, and a structured workflow for integrating external design tools.
+**Design system:** Glassmorphism, custom tokens (cardzzz-wine, cardzzz-blood, cardzzz-cream, cardzzz-accent, cardzzz-muted), Satoshi for body/labels, Roundo for headings (lowercase). See `.cursor/rules/ui-styling.mdc`.
 
-**Tech Stack:**
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
+---
 
-**Design System:**
-- Glassmorphism UI with custom design tokens
-- Custom typography (Satoshi for body, Roundo for headings)
-- Consistent naming conventions and component structure
+## Project structure (source of truth)
 
-## Project Structure
+- **`src/app/`** — Next.js routes and app files only (`page.tsx`, `layout.tsx`, `globals.css`). No reusable UI here.
+- **`src/components/`** — All reusable UI: Chat, EditorChat, LoadingSignup, NavMenuModal, PaywallModal, ActivateModal, PreviewWrapper, Collection, CollectionWithCards, Settings. One component per file; kebab-case filenames, PascalCase component names.
+- **`src/hooks/`** — Shared hooks (e.g. `useChatLogic.ts`).
+- **`src/lib/`** — Agents (collector, architect, engineer, iterator), build flow, store, types, LLM, auth, dev-pipeline-store.
+- **`src/app/api/`** — API routes (chat, session, build, dev pipeline, etc.).
+- **`docs/`** — Project documentation. Canonical spec: `docs/MASTER_PROMPT_BACKEND.md`. Dev pipeline: `docs/DEV_PIPELINE.md`. Preview debugging: `docs/DEBUG_PREVIEW.md`.
 
-```
-src/
-├── app/
-│   ├── _quarantine/          # Raw, unsanitized components from Builder.io/Figma
-│   │   ├── RawChat.tsx       # Chat interface screen
-│   │   ├── RawLoadingSignup.tsx  # Loading/signup screen (to be added)
-│   │   └── useChatLogic.ts   # Shared hooks/logic
-│   ├── components/           # Sanitized, reusable components (to be created)
-│   │   ├── glass/
-│   │   │   ├── GlassInput.tsx
-│   │   │   ├── GlassBubble.tsx
-│   │   │   └── GlassContainer.tsx
-│   │   └── ui/
-│   │       ├── Navbar.tsx
-│   │       └── Button.tsx
-│   ├── page.tsx              # Root page (routes to screens)
-│   └── globals.css           # Design tokens and global styles
-```
+There is **no** `_quarantine` folder; no `Raw`-prefixed components. New screens go in `src/components/` and are imported from `@/components/` in pages. See `.cursor/rules/directory-structure-naming.mdc`.
 
-## The Quarantine Workflow
+---
 
-This project uses a two-phase approach for importing external code from Builder.io and Figma, ensuring code quality and maintainability.
+## Documentation
 
-### Phase 1: Quarantine (Raw Import)
-
-**Location:** All Builder.io/Figma code goes into `src/app/_quarantine/`
-
-**Naming Convention:** Files are prefixed with `Raw` (e.g., `RawChat.tsx`, `RawLoadingSignup.tsx`)
-
-**Process:**
-- Code is imported as-is, without modification
-- All original classes, styles, and structure are preserved
-- Purpose: Isolate external code for systematic sanitization
-
-**Why Quarantine?**
-- Prevents external code from polluting the main codebase
-- Allows for systematic review and sanitization
-- Makes it easy to track what needs to be cleaned up
-- Provides a clear separation between raw imports and production code
-
-### Phase 2: Sanitization
-
-After code is quarantined, it undergoes systematic transformation:
-
-1. **Transform raw code** to match project standards
-2. **Extract reusable components** to reduce duplication
-3. **Apply design tokens** and naming conventions
-4. **Move sanitized code** to appropriate locations (`src/app/components/`)
-
-## Step-by-Step Import Process
-
-Follow this workflow when importing code from Builder.io or Figma:
-
-### Step 1: Create Raw Component
-
-1. Create a new file in `_quarantine/` folder (e.g., `RawLoadingSignup.tsx`)
-2. Paste Builder.io/Figma code directly into the file
-3. Keep all original code intact (classes, styles, structure)
-4. Do not modify anything at this stage
-
-**Example:**
-```tsx
-// src/app/_quarantine/RawLoadingSignup.tsx
-"use client";
-
-export default function RawLoadingSignup() {
-  return (
-    <div style={{ background: "#220020" }}>
-      {/* Raw Builder.io/Figma code */}
-    </div>
-  );
-}
-```
-
-### Step 2: Initial Sanitization
-
-Replace hardcoded values with design tokens and apply consistent styling:
-
-**Color Replacements:**
-- `#220020` → `cardzzz-wine`
-- `#560000` → `cardzzz-blood`
-- `#FFFADC` → `cardzzz-cream`
-- `#890305` → `cardzzz-accent`
-- `#858582` → `cardzzz-muted`
-
-**Apply Glassmorphism Formula:**
-```tsx
-// Standard glassmorphism pattern
-className="bg-white/10 backdrop-blur-md border border-white/20 rounded-[30px]"
-```
-
-**Replace Generic Class Names:**
-- Use `Comp_` prefix for reusable components
-- Use `Section_` prefix for major layout blocks
-- Use `Layout_` prefix for page-level containers
-- Use `Chat_` prefix for chat-specific elements
-
-**Before:**
-```tsx
-<div className="input-field" style={{ background: "#220020" }}>
-  <button className="btn-primary">Click</button>
-</div>
-```
-
-**After:**
-```tsx
-<div className="Comp_Text_Input bg-white/10 backdrop-blur-md border border-white/20">
-  <button className="Comp_Button-Primary bg-cardzzz-cream text-cardzzz-accent">
-    Click
-  </button>
-</div>
-```
-
-### Step 3: Typography Standardization
-
-**Body Text:** Use `font-satoshi`
-```tsx
-<div className="font-satoshi text-[14px]">
-  Body text content
-</div>
-```
-
-**Headings/Buttons:** Use `font-roundo` (always lowercase)
-```tsx
-<button className="font-roundo font-bold text-[19px]">
-  send
-</button>
-```
-
-**Precise Sizing:** Use Tailwind arbitrary values
-```tsx
-className="text-[14px] p-[13px]"
-```
-
-### Step 4: Component Extraction
-
-Identify repeated patterns and extract them into reusable components:
-
-1. **Identify patterns** (glass inputs, bubbles, containers)
-2. **Create component files** in `src/app/components/`
-3. **Add TypeScript props** for configurability
-4. **Update raw component** to use extracted components
-
-**Example Extraction:**
-```tsx
-// src/app/components/glass/GlassBubble.tsx
-type GlassBubbleProps = {
-  children: React.ReactNode;
-  sender?: "user" | "ai";
-};
-
-export function GlassBubble({ children, sender = "ai" }: GlassBubbleProps) {
-  return (
-    <div className={`Chat_bubble_${sender} bg-white/10 backdrop-blur-md border border-white/20 rounded-[30px] p-[10px_15px]`}>
-      {children}
-    </div>
-  );
-}
-```
-
-### Step 5: Remove Builder.io Artifacts
-
-Clean up external tool-specific code:
-
-- Remove Builder.io-specific attributes (`data-component-name`, etc.)
-- Remove inline styles (convert to Tailwind classes)
-- Remove unused imports
-- Clean up commented code
-- Fix any hydration errors
-
-**Before:**
-```tsx
-<div 
-  data-component-name="Button"
-  style={{ padding: "10px", background: "#FFFADC" }}
-  className="btn"
->
-  Click
-</div>
-```
-
-**After:**
-```tsx
-<button className="Comp_Button-Primary bg-cardzzz-cream p-[10px]">
-  Click
-</button>
-```
-
-### Step 6: Integration
-
-Final integration steps:
-
-1. Add navigation/routing logic
-2. Connect to existing hooks/logic (e.g., `useChatLogic.ts`)
-3. Test the complete user flow
-4. Ensure responsive behavior
-5. Verify accessibility
+| Doc | Purpose |
+|-----|---------|
+| `docs/MASTER_PROMPT_BACKEND.md` | Canonical spec: three flows, four agents, routes, element map, mermaid diagrams |
+| `docs/DEV_PIPELINE.md` | Dev pipeline at `/dev/pipeline`: E2E streaming, interactive workflow, preview, problems & solutions |
+| `docs/DEBUG_PREVIEW.md` | Debugging the in-app preview and viewport (full-height) |
+| `docs/BLUEPRINT_EFFECTS.md` | Blueprint effects reference |
+| `docs/DOCUMENTATION_INDEX.md` | Index of all docs and cursor rules with one-line purpose |
+| `.cursor/rules/` | Cursor rules (flows, UI styling, modals, notifications, code style, directory structure) |
 
 ## Design System Reference
 
@@ -346,41 +161,10 @@ npm run build
 npm start
 ```
 
-## Additional Resources
+## Additional resources
 
-- **Styling Guidelines**: See `.cursor/rules/ui-styling.mdc` for detailed styling standards
-- **Cursor Rules**: See `.cursor/rules/cursor-rules.mdc` for project conventions
-- **Design Tokens**: Defined in `src/app/globals.css`
-
-## Code Transformation Examples
-
-### Before (Raw Builder.io Code)
-```tsx
-<div 
-  className="chat-bubble"
-  style={{ 
-    background: "rgba(255, 250, 220, 0.1)",
-    backdropFilter: "blur(10px)",
-    border: "1px solid rgba(255, 255, 255, 0.2)",
-    borderRadius: "30px",
-    padding: "10px 15px"
-  }}
->
-  <span style={{ color: "#FFFADC", fontFamily: "Satoshi" }}>
-    Hello, I'm the assistant!
-  </span>
-</div>
-```
-
-### After (Sanitized Code)
-```tsx
-<div className="Chat_bubble_ai bg-white/10 backdrop-blur-md border border-white/20 rounded-[30px] p-[10px_15px]">
-  <div className="BodyText text-cardzzz-cream font-satoshi text-[14px]">
-    Hello, I'm the assistant!
-  </div>
-</div>
-```
-
----
-
-**Note:** This README serves as a living document. Update it as the project evolves and new patterns emerge.
+- **Canonical spec:** `docs/MASTER_PROMPT_BACKEND.md`
+- **Dev pipeline:** `docs/DEV_PIPELINE.md`
+- **Styling:** `.cursor/rules/ui-styling.mdc`
+- **Cursor rules:** `.cursor/rules/cursor-rules.mdc`
+- **Design tokens:** `src/app/globals.css`

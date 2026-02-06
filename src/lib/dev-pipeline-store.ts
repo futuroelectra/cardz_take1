@@ -18,3 +18,9 @@ export function getCurrent(): { blueprint: Blueprint; artifact: BuildArtifact } 
   if (!currentBlueprint || !currentArtifact) return null;
   return { blueprint: currentBlueprint, artifact: currentArtifact };
 }
+
+/** Clears the in-memory current build so preview and pipeline start from a clean slate. */
+export function clearCurrent(): void {
+  currentBlueprint = null;
+  currentArtifact = null;
+}

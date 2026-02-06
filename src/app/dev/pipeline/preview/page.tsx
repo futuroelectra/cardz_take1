@@ -11,25 +11,45 @@ export default function DevPipelinePreviewPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !window.parent) return;
+    window.parent.postMessage({ type: "preview-status", status: "loading" }, "*");
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     async function fetchCurrent() {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[preview-page] fetch /api/dev/pipeline/current ...");
+      }
       try {
         const res = await fetch("/api/dev/pipeline/current");
         const data = await res.json();
         if (cancelled) return;
+        if (process.env.NODE_ENV === "development") {
+          console.log("[preview-page] response ok:", res.ok, "has artifact:", !!data?.artifact?.code);
+        }
         if (!res.ok) {
           setError("Could not load current build.");
           setArtifact(null);
           return;
         }
         if (data.artifact && typeof data.artifact.code === "string") {
+          if (process.env.NODE_ENV === "development") {
+            console.log("[preview-page] artifact received, code length:", data.artifact.code.length);
+          }
           setArtifact(data.artifact);
           setError(null);
         } else {
+          if (process.env.NODE_ENV === "development") {
+            console.log("[preview-page] no artifact in response (run pipeline first)");
+          }
           setArtifact(null);
           setError(null);
         }
-      } catch {
+      } catch (e) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[preview-page] fetch error:", e);
+        }
         if (!cancelled) {
           setError("Could not load current build.");
           setArtifact(null);
@@ -43,6 +63,24 @@ export default function DevPipelinePreviewPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.parent) return;
+    if (loading) {
+      window.parent.postMessage({ type: "preview-status", status: "loading" }, "*");
+    } else if (error || !artifact) {
+      window.parent.postMessage(
+        {
+          type: "preview-status",
+          status: "error",
+          message: error ?? "Run the pipeline first from the dev pipeline page.",
+        },
+        "*"
+      );
+    } else {
+      window.parent.postMessage({ type: "preview-status", status: "ready" }, "*");
+    }
+  }, [loading, error, artifact]);
 
   if (loading) {
     return (
@@ -71,8 +109,8 @@ export default function DevPipelinePreviewPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-b from-cardzzz-wine to-cardzzz-blood p-4">
-      <div className="flex flex-col items-center gap-2">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-cardzzz-wine to-cardzzz-blood">
+      <div className="flex shrink-0 flex-col items-center gap-1 py-2 px-2">
         <a
           href="/api/dev/pipeline/codesandbox-url?redirect=1"
           target="_blank"
@@ -85,7 +123,9 @@ export default function DevPipelinePreviewPage() {
           Opens the current build in a new tab (server redirect; no code sent from this page).
         </p>
       </div>
-      <PreviewWrapper code={artifact.code} />
+      <div className="min-h-0 flex-1 flex items-start justify-center">
+        <PreviewWrapper code={artifact.code} />
+      </div>
     </div>
   );
 }

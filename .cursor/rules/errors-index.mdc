@@ -1,0 +1,24 @@
+---
+description: Keep a living index of errors so we never repeat them; update when fixing bugs
+globs: docs/ERRORS_INDEX.md, src/app/dev/**/*, src/components/PreviewWrapper.tsx, src/lib/agents/engineer.ts
+alwaysApply: false
+---
+# Errors index (never repeat)
+
+When an error happens in this project, we record it and add safeguards so it never happens again.
+
+## Rule: Update the errors index
+
+- **When you fix a bug** (especially in the dev pipeline, preview iframe, or generated Card code), add an entry to **`docs/ERRORS_INDEX.md`** with: error message (or summary), root cause, fix/prevention, and where you added a safeguard (e.g. Engineer prompt, post-process, rule).
+- **When you encounter a new error** (runtime, preview, pipeline, or build), add it to the index as soon as the root cause is known. If a safeguard is added (prompt change, code check, or rule), document it in the same entry.
+- **Before changing code** that could reintroduce a known failure (e.g. Engineer prompt, Sandpack wrapper, pipeline error handling), check **`docs/ERRORS_INDEX.md`** for that error and keep the existing safeguards in place.
+
+## Where safeguards live
+
+- **Engineer-generated Card code:** Prompt and errorContext in `src/lib/agents/engineer.ts`. Errors from the preview are sent to the Engineer on the next run so the model avoids repeating them. Critical rules (e.g. "import every component; never render undefined") are in the system and main prompt.
+- **Preview / Sandpack:** `src/components/PreviewWrapper.tsx` and `docs/DEBUG_PREVIEW.md`.
+- **Pipeline behavior:** `docs/DEV_PIPELINE.md` and `docs/ERRORS_INDEX.md`.
+
+## Coordination
+
+This rule works with [pipeline-agent-workflow.mdc](.cursor/rules/pipeline-agent-workflow.mdc) (simulate → visualize → refine) and [cursor-rules-lifecycle.mdc](.cursor/rules/cursor-rules-lifecycle.mdc). When you add or change a rule that affects errors or the pipeline, consider adding or updating an entry in `docs/ERRORS_INDEX.md`.

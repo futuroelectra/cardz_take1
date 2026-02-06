@@ -9,16 +9,26 @@ function isDev(): boolean {
   return process.env.NODE_ENV === "development";
 }
 
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+  Pragma: "no-cache",
+};
+
 export async function GET(): Promise<NextResponse<unknown>> {
   if (!isDev()) {
     return NextResponse.json({ error: "Not available" }, { status: 404 });
   }
   const current = getCurrent();
   if (!current) {
-    return NextResponse.json({ blueprint: null, artifact: null });
+    return NextResponse.json({ blueprint: null, artifact: null }, {
+      headers: NO_CACHE_HEADERS,
+    });
   }
-  return NextResponse.json({
-    blueprint: current.blueprint,
-    artifact: current.artifact,
-  });
+  return NextResponse.json(
+    {
+      blueprint: current.blueprint,
+      artifact: current.artifact,
+    },
+    { headers: NO_CACHE_HEADERS }
+  );
 }

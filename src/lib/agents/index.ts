@@ -1,10 +1,13 @@
 export {
   hasEnoughForCreativeSummary,
   extractCreativeSummary,
+  generateProseSummary,
   getCollectorReply,
+  getCollectorReplyStream,
   getCollectorWelcomeMessage,
+  runCompletionCheck,
 } from "./collector";
-export { creativeSummaryToBlueprint } from "./architect";
+export { creativeSummaryToBlueprint, transcriptToBlueprint } from "./architect";
 export { blueprintToCode, realignCode } from "./engineer";
 export { codeDiffRatio, shouldRealign, runWatcher } from "./watcher";
 export { applyIteration, getIteratorReply } from "./iterator";

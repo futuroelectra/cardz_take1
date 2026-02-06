@@ -63,6 +63,7 @@ export async function generate(params: GenerateParams): Promise<string> {
   }
 
   if (genAI) {
+    // Fast model for chat, agents, and E2E user simulation (quicker test runs).
     const modelName = "gemini-2.0-flash";
     const model = genAI.getGenerativeModel({
       model: modelName,
@@ -89,6 +90,97 @@ export async function generate(params: GenerateParams): Promise<string> {
     if (prompt) {
       const result = await model.generateContent(prompt);
       return result.response.text();
+    }
+  }
+
+  throw new Error("LLM not configured: set GOOGLE_GENAI_API_KEY or OPENAI_GENAI_API_KEY and MODEL_PROVIDER");
+}
+
+/**
+ * Stream text from the configured provider. No responseFormat (JSON) support; use for chat only.
+ */
+export async function* generateStream(params: Omit<GenerateParams, "responseFormat">): AsyncGenerator<string> {
+  const { messages, prompt, systemInstruction } = params;
+
+  if (provider === "OPEN_AI" && openai) {
+    const openaiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
+    if (systemInstruction) {
+      openaiMessages.push({ role: "system", content: systemInstruction });
+    }
+    if (messages?.length) {
+      for (const m of messages) {
+        openaiMessages.push({
+          role: m.role === "model" ? "assistant" : "user",
+          content: m.parts[0].text,
+        });
+      }
+    } else if (prompt) {
+      openaiMessages.push({ role: "user", content: prompt });
+    }
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: openaiMessages,
+      stream: true,
+    });
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (typeof content === "string" && content) yield content;
+    }
+    return;
+  }
+
+  if (genAI) {
+    // Fast model for chat, agents, and E2E user simulation (quicker test runs).
+    const modelName = "gemini-2.0-flash";
+    const model = genAI.getGenerativeModel({
+      model: modelName,
+      systemInstruction: systemInstruction ?? undefined,
+    });
+
+    if (messages?.length) {
+      const last = messages[messages.length - 1];
+      const history = messages.slice(0, -1);
+      const filteredHistory = history.filter((m) => m.role !== "model" || m.parts[0].text);
+      if (filteredHistory.length > 0) {
+        const chat = model.startChat({
+          history: filteredHistory.map((m) => ({
+            role: m.role,
+            parts: m.parts,
+          })),
+        });
+        const result = await chat.sendMessageStream(last.parts[0].text);
+        for await (const chunk of result.stream) {
+          try {
+            const text = chunk.text?.();
+            if (typeof text === "string" && text) yield text;
+          } catch {
+            // Skip blocked or empty chunks
+          }
+        }
+        return;
+      }
+      const result = await model.generateContentStream(last.parts[0].text);
+      for await (const chunk of result.stream) {
+        try {
+          const text = chunk.text?.();
+          if (typeof text === "string" && text) yield text;
+        } catch {
+          // Skip blocked or empty chunks
+        }
+      }
+      return;
+    }
+    if (prompt) {
+      const result = await model.generateContentStream(prompt);
+      for await (const chunk of result.stream) {
+        try {
+          const text = chunk.text?.();
+          if (typeof text === "string" && text) yield text;
+        } catch {
+          // Skip blocked or empty chunks
+        }
+      }
+      return;
     }
   }
 

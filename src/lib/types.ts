@@ -153,12 +153,16 @@ export type BuildArtifact = {
 // ----- Build (card in progress or exported) -----
 export type BuildStatus = "pending" | "ready" | "failed";
 
+/** Input to Agent 2: either raw transcript (production) or creative summary (dev pipeline / legacy). */
+export type BuildAgent2Input = CreativeSummary | { transcript: string };
+
 export type Build = {
   id: BuildId;
   sessionId: SessionId;
   userId?: UserId;
   status: BuildStatus;
-  creativeSummary: CreativeSummary;
+  /** Stored as JSON: either CreativeSummary (dev/legacy) or { transcript: string } (production). Agent 2 reads transcript when present. */
+  creativeSummary: BuildAgent2Input;
   blueprint?: Blueprint;
   artifact?: BuildArtifact;
   /** Token cost so far (editor phase); ~$0.50 new user, ~$1.50 super user cap */

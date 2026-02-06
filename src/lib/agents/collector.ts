@@ -3,7 +3,7 @@
  * Per docs/MASTER_PROMPT_BACKEND.md §5. Uses LLM for replies and completion check. Identity engine for tone.
  */
 
-import { generate, generateJson, type LLMMessage } from "@/lib/llm";
+import { generate, generateStream, generateJson, type LLMMessage } from "@/lib/llm";
 import { getIdentityEngineSummary } from "@/lib/brand/identity";
 import { getCollectorIntentionSummary, getCollectorKnowledgeSummary } from "@/lib/brand/intentions";
 import type { CreativeSummary, ChatMessage } from "@/lib/types";
@@ -215,4 +215,49 @@ export async function getCollectorReply(
   };
 
   return { aiMessage, showConfirmation };
+}
+
+/**
+ * Stream the Collector's main reply only (no completion check or prose). Used for streaming chat UX.
+ * Caller should run completion check and prose after consuming the stream if needed.
+ */
+export async function* getCollectorReplyStream(
+  messages: ChatMessage[],
+  userText: string
+): AsyncGenerator<string> {
+  const trimmed = userText.toLowerCase().trim();
+  if (trimmed === "pop") return;
+
+  const llmMessages = chatMessagesToLLM(messages);
+  const nextMessages: LLMMessage[] = [...llmMessages, { role: "user", parts: [{ text: userText }] }];
+
+  const [identitySummary, collectorIntention, collectorKnowledge] = await Promise.all([
+    getIdentityEngineSummary(),
+    getCollectorIntentionSummary(),
+    getCollectorKnowledgeSummary(),
+  ]);
+  const systemInstruction = `${identitySummary}\n\n${collectorIntention}\n\n${collectorKnowledge}\n\n${COLLECTOR_KNOWLEDGE_RULE}\n\n${COLLECTOR_SYSTEM}`;
+
+  yield* generateStream({
+    messages: nextMessages,
+    systemInstruction,
+  });
+}
+
+/**
+ * Run completion check on a full conversation string. Used by streaming send route.
+ */
+export async function runCompletionCheck(fullConvoForCheck: string): Promise<boolean> {
+  const checkPrompt = `${COMPLETION_CHECK_PROMPT}\n\nConversation:\n${fullConvoForCheck}`;
+  let completionCheck: CompletionCheck = { hasEnoughInfo: false, missingPoints: [] };
+  try {
+    completionCheck = await generateJson<CompletionCheck>({
+      prompt: checkPrompt,
+      systemInstruction: "You are a completion checker. Respond with JSON only.",
+      responseFormat: "json",
+    });
+  } catch {
+    // If JSON parse fails, assume not complete
+  }
+  return completionCheck.hasEnoughInfo === true;
 }

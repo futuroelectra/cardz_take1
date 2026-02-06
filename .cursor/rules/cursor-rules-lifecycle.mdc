@@ -13,7 +13,7 @@ Follow this process so rule changes are consistent and traceable. See create-rul
 - **Proposal step:** New or materially changed rules are proposed (e.g. in a plan or PR) before editing. State rationale and impact on existing rules and [docs/MASTER_PROMPT_BACKEND.md](docs/MASTER_PROMPT_BACKEND.md).
 - **No duplication:** Rules reference the master prompt; they do not restate it. Avoid inlining full tables from [element-maps.mdc](.cursor/rules/element-maps.mdc), [flows.mdc](.cursor/rules/flows.mdc), [modals-variants.mdc](.cursor/rules/modals-variants.mdc). If a rule affects flows or element map, update the master doc instead.
 - **Location and format:** All rules live in `.cursor/rules/`, `.mdc` with YAML frontmatter; naming is kebab-case.
-- **When to update:** New screen, modal, or flow requires master prompt (and optionally flow diagrams) and element map updates. Rule changes that affect behavior require a note in the plan/PR.
+- **When to update:** New screen, modal, or flow requires master prompt (and optionally flow diagrams) and element map updates. Changes to the dev pipeline (`/dev/pipeline`) or in-app preview require `docs/DEV_PIPELINE.md` and/or `docs/DEBUG_PREVIEW.md` to stay accurate. **When you fix a bug or hit a new error** (pipeline, preview, runtime), add an entry to `docs/ERRORS_INDEX.md` and any safeguard (see [errors-index.mdc](.cursor/rules/errors-index.mdc)). Rule changes that affect behavior require a note in the plan/PR.
 - **Versioning:** Rules are the live source; changes are tracked via git.
 
 ## Coordination

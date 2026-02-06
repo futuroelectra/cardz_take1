@@ -98,33 +98,79 @@ input[type="password"]:-webkit-autofill:active {
   position: relative;
   border-radius: 20px;
   isolation: isolate;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Sandpack layout root: fill wrapper, no overflow */
-.editor-preview-frame [class*="sp-layout"] {
+/* Sandpack root wrapper: fill frame so preview can take full height */
+.editor-preview-frame > *,
+.editor-preview-frame .editor-preview-sandpack-wrapper,
+.editor-preview-frame [class*="sp-wrapper"] {
+  flex: 1 !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border-radius: 20px !important;
+}
+
+/* Sandpack layout: fill wrapper */
+.editor-preview-frame [class*="sp-layout"],
+.editor-preview-frame .editor-preview-sandpack-layout {
+  flex: 1 !important;
+  min-height: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  max-height: 720px !important;
-  min-height: 0 !important;
+  max-height: none !important;
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
   border-radius: 20px !important;
 }
 
-.editor-preview-frame [class*="sp-layout"] > * {
+.editor-preview-frame [class*="sp-layout"] > *,
+.editor-preview-frame .editor-preview-sandpack-layout > * {
   min-height: 0 !important;
+  flex: 1 !important;
   overflow: hidden !important;
   border-radius: 20px !important;
 }
 
-/* Sandpack preview iframe: exactly 390×720, rounded corners */
+/* Sandpack preview container: fill layout */
+.editor-preview-frame [class*="sp-preview"],
+.editor-preview-frame .editor-preview-sandpack-preview {
+  flex: 1 !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border-radius: 20px !important;
+}
+
+/* Sandpack preview container div that wraps the iframe: must have height so iframe 100% works */
+.editor-preview-frame [class*="sp-preview-container"],
+.editor-preview-frame .sp-preview-container {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Sandpack preview iframe: force full height (override Sandpack’s inline height), 390 wide, rounded */
 .editor-preview-frame iframe,
-.editor-preview-frame [class*="sp-preview"] iframe {
+.editor-preview-frame [class*="sp-preview"] iframe,
+.editor-preview-frame .editor-preview-sandpack-preview iframe,
+.editor-preview-frame .sp-preview-iframe,
+.editor-preview-frame [class*="sp-preview-iframe"] {
   width: 390px !important;
-  height: 720px !important;
   max-width: 390px !important;
-  max-height: 720px !important;
+  height: 100% !important;
+  flex: 1 1 0 !important;
   min-height: 0 !important;
   border-radius: 20px !important;
   border: none !important;

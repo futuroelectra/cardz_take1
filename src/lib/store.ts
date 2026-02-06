@@ -15,6 +15,7 @@ import type {
   Card,
   CardId,
   CreativeSummary,
+  BuildAgent2Input,
   Blueprint,
   BuildArtifact,
 } from "./types";
@@ -88,7 +89,7 @@ function buildToRow(b: Build): Database["public"]["Tables"]["builds"]["Insert"] 
     session_id: b.sessionId,
     user_id: b.userId ?? null,
     status: b.status,
-    creative_summary: b.creativeSummary as Database["public"]["Tables"]["builds"]["Row"]["creative_summary"],
+    creative_summary: b.creativeSummary as unknown as Database["public"]["Tables"]["builds"]["Row"]["creative_summary"],
     blueprint: b.blueprint as Database["public"]["Tables"]["builds"]["Row"]["blueprint"],
     artifact: b.artifact as Database["public"]["Tables"]["builds"]["Row"]["artifact"],
     token_cost_cents: b.tokenCostCents,
@@ -104,7 +105,7 @@ function rowToBuild(r: Database["public"]["Tables"]["builds"]["Row"]): Build {
     sessionId: r.session_id,
     userId: r.user_id ?? undefined,
     status: r.status as Build["status"],
-    creativeSummary: r.creative_summary as CreativeSummary,
+    creativeSummary: r.creative_summary as Build["creativeSummary"],
     blueprint: r.blueprint as Build["blueprint"],
     artifact: r.artifact as Build["artifact"],
     tokenCostCents: r.token_cost_cents,
@@ -240,14 +241,14 @@ export const store = {
     return builds.get(buildId);
   },
 
-  async createBuild(sessionId: SessionId, creativeSummary: CreativeSummary, userId?: UserId): Promise<Build> {
+  async createBuild(sessionId: SessionId, agent2Input: BuildAgent2Input, userId?: UserId): Promise<Build> {
     const id = generateId("build");
     const build: Build = {
       id,
       sessionId,
       userId,
       status: "pending",
-      creativeSummary,
+      creativeSummary: agent2Input,
       tokenCostCents: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),

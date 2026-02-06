@@ -1,0 +1,41 @@
+---
+description: Way of work for AI agent pipelines—define, map I/O, build, simulate, visualize, refine
+alwaysApply: true
+---
+# Pipeline Agent Workflow
+
+This rule defines the **way of work** for building and refining systems made of AI agents. It governs how we approach design and iteration.
+
+## The loop
+
+1. **Define the pipeline**  
+   Specify the pipeline of AI agents: what each agent does and in what order.
+
+2. **Map inputs and outputs**  
+   For each step, define inputs and outputs clearly. No implementation until the map is explicit.
+
+3. **Build the system**  
+   Implement the pipeline so each agent consumes the defined inputs and produces the defined outputs.
+
+4. **Simulate users**  
+   Run simulated users (e.g. test flows, dev endpoints, or scripted scenarios) through the system.
+
+5. **Visualize**  
+   At each step, show the **inputs** and **outputs**. We judge quality by inspecting what goes in and what comes out at every stage.
+
+6. **Refine**  
+   Decide what to change at a high level (“we don’t like this output”, “we want the Collector to do X before Y”). Refine prompts, logic, or I/O shape—then repeat from simulate/visualize.
+
+## Principle
+
+**Fast, high-level iteration.** We do not debug line-by-line first. We: look at step outputs → say how we want them to change → refine → run again. Click a button (or trigger a run), check the result, refine. The goal is to confirm behavior quickly by seeing each step’s inputs and outputs, then refining until it looks right.
+
+## When this applies
+
+- Designing or changing any multi-agent pipeline (e.g. Collector → Architect → Engineer → Iterator).
+- Adding a new agent or step: define its inputs and outputs in the map, then build, then simulate and visualize.
+- Debugging or improving quality: inspect I/O at the step that’s wrong; refine that step’s contract or implementation; re-run and re-check.
+
+## Coordination
+
+This workflow is supported by the dev pipeline at `/dev/pipeline` (see `docs/DEV_PIPELINE.md`): streaming E2E, live status, workflow/visual toggle, interactive transcript and summary edits. It runs the system and surfaces step-level I/O. New agents or steps should be pluggable into that visualization so we keep the same “run → see outputs → refine” loop.
